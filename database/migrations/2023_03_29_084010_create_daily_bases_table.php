@@ -13,6 +13,48 @@ return new class extends Migration
     {
         Schema::create('daily_bases', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('company_id')->nullable();
+            $table->unsignedBigInteger('vehicle_id')->nullable();
+            $table->unsignedBigInteger('driver_id')->nullable();
+            $table->unsignedBigInteger('vendor_id')->nullable();
+            $table->unsignedBigInteger('client_id')->nullable();
+            $table->unsignedBigInteger('status_id')->nullable();
+
+            $table->enum('fuel_type', array('Octane', 'Diesel', 'Petrol', 'LPG', 'CNG'));
+            $table->double('per_km_rate',11,2)->nullable();
+            $table->double('body_rate_per_day',11,2)->nullable();
+            $table->double('package_rate_per_day',11,2)->nullable();
+            $table->double('package_km_limit_per_day',11,2)->nullable();
+            $table->double('lunch_per_day',11,2)->nullable();
+            $table->double('dinner_per_day',11,2)->nullable();
+            $table->double('ot_per_hour',11,2)->nullable();
+            $table->double('tour_allowance_per_night',11,2)->nullable();
+
+            $table->enum('client_type', array('Company','Individual'));
+            $table->string('name');
+            $table->string('email')->nullable();
+            $table->string('website',50)->nullable();
+            $table->string('mobile_no',50)->nullable();
+            $table->string('phone_no',50)->nullable();
+//            if client type company
+            $table->string('trade_licence_no')->nullable();
+            $table->string('tin_no')->nullable();
+            $table->string('bin_no')->nullable();
+            $table->text('address');
+            $table->string('city',30)->nullable();
+            $table->string('state',30)->nullable();
+            $table->string('zip_code',30)->nullable();
+            $table->integer('country')->comment('this is the id of country')->nullable();
+            $table->string('contact_person_name',50)->nullable();
+            $table->string('contact_person_mobile_no',50)->nullable();
+            $table->string('contact_person_email')->nullable();
+            $table->string('contact_person_nid')->nullable();
+            $table->string('contact_person_designation',50)->nullable();
+            $table->double('opening_balance',11,2)->default(0);
+            $table->double('current_balance',11,2)->default(0);
+
+            $table->integer('is_active')->default(1)->comment('0=inactive, 1= active');
+            $table->softDeletes();
             $table->timestamps();
         });
     }
