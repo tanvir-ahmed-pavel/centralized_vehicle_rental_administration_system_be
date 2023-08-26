@@ -13,15 +13,9 @@ class ClientController extends Controller
      */
     public function index()
     {
-        //
-    }
+        $clients = Client::orderBy('id', 'desc')->paginate(10);
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+        return response()->json($clients, 200);
     }
 
     /**
@@ -29,38 +23,47 @@ class ClientController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validatedData = $request->validate(Client::validationRules());
+
+        $client = Client::create($validatedData);
+
+        return response()->json(['message' => 'Client created successfully', 'data' => $client], 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Client $client)
+    public function show($id)
     {
-        //
+        $client = Client::findOrFail($id);
+        return response()->json(['client' => $client]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Client $client)
-    {
-        //
-    }
+
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Client $client)
+    public function update(Request $request, $id)
     {
-        //
+        $client = Client::findOrFail($id);
+
+        $validatedData = $request->validate(Client::validationRules());
+
+        $client->update($validatedData);
+
+        return response()->json(['message' => 'Client updated successfully', 'data' => $client], 200);
     }
+
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Client $client)
+    public function destroy($id)
     {
-        //
+        $client = Client::findOrFail($id);
+        $client->delete();
+
+        return response()->json(['message' => 'Client deleted successfully'], 200);
     }
 }

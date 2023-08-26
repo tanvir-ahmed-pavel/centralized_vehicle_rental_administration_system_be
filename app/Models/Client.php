@@ -17,22 +17,60 @@ class Client extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-//        'name',
-//        'email',
-//        'password',
+        'company_id',
+        'client_group_id',
+        'client_type',
+        'name',
+        'email',
+        'mobile_no',
+        'tel_no',
+        'trade_license_no',
+        'tin_no',
+        'bin_no',
+        'address',
+        'city',
+        'state',
+        'zip_code',
+        'country',
+        'contact_person_name',
+        'contact_person_mobile_no',
+        'contact_person_email',
+        'contact_person_nid',
+        'contact_person_designation',
+        'opening_balance',
+        'current_balance',
+        'is_active',
     ];
 
     /**
      * Validation helper.
      *
      */
-    public function validate()
+    public static function validationRules()
     {
-        return Validator::make($this->attributes, [
-//            'name' => 'required|max:255',
-//            'description' => 'required|max:255',
-//            'price' => 'required|numeric|min:0',
-        ]);
+        return [
+            'client_type' => 'required|in:Company,Individual',
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'mobile_no' => 'required|string|max:50',
+            'tel_no' => 'nullable|string|max:50',
+            'trade_license_no' => 'nullable|string|max:255',
+            'tin_no' => 'nullable|string|max:255',
+            'bin_no' => 'nullable|string|max:255',
+            'address' => 'nullable|string',
+            'city' => 'nullable|string|max:30',
+            'state' => 'nullable|string|max:30',
+            'zip_code' => 'nullable|string|max:30',
+            'country' => 'nullable', 'string', // Assuming 'countries' is the table name for your Country model
+            'contact_person_name' => 'nullable|string|max:50',
+            'contact_person_mobile_no' => 'nullable|string|max:50',
+            'contact_person_email' => 'nullable|email|max:255',
+            'contact_person_nid' => 'nullable|string|max:255',
+            'contact_person_designation' => 'nullable|string|max:50',
+            'opening_balance' => 'nullable|numeric|min:0',
+            'current_balance' => 'nullable|numeric|min:0',
+            'is_active' => 'boolean',
+        ];
     }
 
 //    Events for cascading on delete

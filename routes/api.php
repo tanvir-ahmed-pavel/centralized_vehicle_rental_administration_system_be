@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ClientController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -17,6 +18,11 @@ use Illuminate\Support\Facades\Route;
 Route::post('/register', [\App\Http\Controllers\AuthController::class, 'register']);
 Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login']);
 Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout']);
-Route::get('/test', function (){
-    return "working";
+Route::post('/verify_token', [\App\Http\Controllers\AuthController::class, 'verify_auth'])->middleware("auth:api");
+
+
+//Guarded Route
+
+Route::middleware('auth:api')->group(function () {
+    Route::apiResource('clients', ClientController::class);
 });
