@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vendor;
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
 class VendorController extends Controller
@@ -13,15 +12,9 @@ class VendorController extends Controller
      */
     public function index()
     {
-        //
-    }
+        $vendors = Vendor::orderBy('id', 'desc')->paginate(10);
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+        return response()->json($vendors, 200);
     }
 
     /**
@@ -29,38 +22,44 @@ class VendorController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validatedData = $request->validate(Vendor::validationRules());
+
+        $vendor = Vendor::create($validatedData);
+
+        return response()->json(['message' => 'Vendor created successfully', 'data' => $vendor], 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Vendor $vendor)
+    public function show($id)
     {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Vendor $vendor)
-    {
-        //
+        $vendor = Vendor::findOrFail($id);
+        return response()->json(['vendor' => $vendor]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Vendor $vendor)
+    public function update(Request $request, $id)
     {
-        //
+        $vendor = Vendor::findOrFail($id);
+
+        $validatedData = $request->validate(Vendor::validationRules());
+
+        $vendor->update($validatedData);
+
+        return response()->json(['message' => 'Vendor updated successfully', 'data' => $vendor], 200);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Vendor $vendor)
+    public function destroy($id)
     {
-        //
+        $vendor = Vendor::findOrFail($id);
+        $vendor->delete();
+
+        return response()->json(['message' => 'Vendor deleted successfully'], 200);
     }
 }

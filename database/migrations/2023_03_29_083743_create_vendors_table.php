@@ -17,20 +17,20 @@ return new class extends Migration
             $table->unsignedBigInteger('vendor_group_id')->nullable();
 
             $table->enum('vendor_type', array('Company','Individual'));
-            $table->string('name');
+            $table->string('name')->nullable();
             $table->string('email')->nullable();
             $table->string('website',50)->nullable();
             $table->string('mobile_no',50)->nullable();
-            $table->string('phone_no',50)->nullable();
+            $table->string('tel_no',50)->nullable();
             //            if vendor type company
-            $table->string('trade_licence_no')->nullable();
+            $table->string('trade_license_no')->nullable();
             $table->string('tin_no')->nullable();
             $table->string('bin_no')->nullable();
-            $table->text('address');
+            $table->text('address')->nullable();
             $table->string('city',30)->nullable();
             $table->string('state',30)->nullable();
             $table->string('zip_code',30)->nullable();
-            $table->integer('country')->comment('this is the id of country')->nullable();
+            $table->string('country')->comment('this is the id of country')->nullable();
             $table->string('contact_person_name',50)->nullable();
             $table->string('contact_person_mobile_no',50)->nullable();
             $table->string('contact_person_email')->nullable();
