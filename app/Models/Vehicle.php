@@ -52,7 +52,7 @@ class Vehicle extends Model
             'driver_id' => 'nullable|exists:drivers,id',
             'vendor_id' => 'nullable|exists:vendors,id',
             'vehicle_owner' => ['required', Rule::in(['Own', 'Vendor'])],
-            'fuel_type' => ['required', Rule::in(['Octane', 'Diesel', 'Petrol', 'LPG', 'CNG'])],
+            'fuel_type' => ['nullable', Rule::in(['Octane', 'Diesel', 'Petrol', 'LPG', 'CNG'])],
             'name' => 'required|string|max:255',
             'brand' => 'nullable|string|max:50',
             'model_year' => 'nullable|string|max:50',
