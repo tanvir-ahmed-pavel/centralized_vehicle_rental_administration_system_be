@@ -13,15 +13,9 @@ class DriverController extends Controller
      */
     public function index()
     {
-        //
-    }
+        $drivers = Driver::orderBy('id', 'desc')->paginate(10);
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+        return response()->json($drivers, 200);
     }
 
     /**
@@ -29,38 +23,44 @@ class DriverController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validatedData = $request->validate(Driver::validationRules());
+
+        $driver = Driver::create($validatedData);
+
+        return response()->json(['message' => 'Driver created successfully', 'data' => $driver], 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Driver $driver)
+    public function show($id)
     {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Driver $driver)
-    {
-        //
+        $driver = Driver::findOrFail($id);
+        return response()->json(['data' => $driver],200);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Driver $driver)
+    public function update(Request $request, $id)
     {
-        //
+        $driver = Driver::findOrFail($id);
+
+        $validatedData = $request->validate(Driver::validationRules());
+
+        $driver->update($validatedData);
+
+        return response()->json(['message' => 'Driver updated successfully', 'data' => $driver], 200);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Driver $driver)
+    public function destroy($id)
     {
-        //
+        $driver = Driver::findOrFail($id);
+        $driver->delete();
+
+        return response()->json(['message' => 'Driver deleted successfully'], 200);
     }
 }

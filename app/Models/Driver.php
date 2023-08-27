@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class Driver extends Model
 {
@@ -17,9 +18,25 @@ class Driver extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-//        'name',
-//        'email',
-//        'password',
+        'company_id',
+        'vehicle_id',
+        'vendor_id',
+        'driver_type',
+        'name',
+        'email',
+        'mobile_no',
+        'driving_license_no',
+        'licence_expiry_date',
+        'nid',
+        'is_available',
+        'address',
+        'city',
+        'state',
+        'zip_code',
+        'country',
+        'opening_balance',
+        'current_balance',
+        'is_active',
     ];
 
     /**
@@ -28,11 +45,27 @@ class Driver extends Model
      */
     public function validate()
     {
-        return Validator::make($this->attributes, [
-//            'name' => 'required|max:255',
-//            'description' => 'required|max:255',
-//            'price' => 'required|numeric|min:0',
-        ]);
+        return [
+            'company_id' => 'nullable|exists:companies,id',
+            'vehicle_id' => 'nullable|exists:vehicles,id',
+            'vendor_id' => 'nullable|exists:vendors,id',
+            'driver_type' => ['required', Rule::in(['Own', 'Vendor'])],
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'mobile_no' => 'nullable|string|max:50',
+            'driving_license_no' => 'nullable|string|max:255',
+            'licence_expiry_date' => 'nullable|date',
+            'nid' => 'nullable|string|max:255',
+            'is_available' => 'boolean',
+            'address' => 'nullable|string',
+            'city' => 'nullable|string|max:30',
+            'state' => 'nullable|string|max:30',
+            'zip_code' => 'nullable|string|max:30',
+            'country' => 'nullable|string',
+            'opening_balance' => 'nullable|numeric|min:0',
+            'current_balance' => 'nullable|numeric|min:0',
+            'is_active' => 'boolean',
+        ];
     }
 
 //    Events for cascading on delete

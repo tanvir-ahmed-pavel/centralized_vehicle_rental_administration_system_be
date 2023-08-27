@@ -23,21 +23,21 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->nullable();
             $table->string('mobile_no',50)->nullable();
-            $table->string('driving_licence_no')->nullable();
+            $table->string('driving_license_no')->nullable();
             $table->date('licence_expiry_date')->nullable();
             $table->string('nid')->nullable();
-            $table->integer('is_available')->default(1)->comment('0=unavailable, 1= available');
-            $table->text('address');
+            $table->boolean('is_available')->default(true)->comment('0=unavailable, 1= available');
+            $table->text('address')->nullable();
             $table->string('city',30)->nullable();
             $table->string('state',30)->nullable();
             $table->string('zip_code',30)->nullable();
-            $table->integer('country')->comment('this is the id of country')->nullable();
+            $table->string('country')->nullable();
 
 //            if own driver then
             $table->double('opening_balance',11,2)->default(0);
             $table->double('current_balance',11,2)->default(0);
 
-            $table->integer('is_active')->default(1)->comment('0=inactive, 1= active');
+            $table->boolean('is_active')->default(true)->comment('0=inactive, 1= active');
             $table->softDeletes();
             $table->timestamps();
         });
