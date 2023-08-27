@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VendorController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -16,10 +18,10 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::post('/register', [\App\Http\Controllers\AuthController::class, 'register']);
-Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login']);
-Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout']);
-Route::post('/verify_token', [\App\Http\Controllers\AuthController::class, 'verify_auth'])->middleware("auth:api");
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout']);
+Route::post('/verify_token', [AuthController::class, 'verify_auth'])->middleware("auth:api");
 
 
 //Guarded Route
@@ -27,4 +29,5 @@ Route::post('/verify_token', [\App\Http\Controllers\AuthController::class, 'veri
 Route::middleware('auth:api')->group(function () {
     Route::apiResource('clients', ClientController::class);
     Route::apiResource('vendors', VendorController::class);
+    Route::apiResource('vehicles', VehicleController::class);
 });

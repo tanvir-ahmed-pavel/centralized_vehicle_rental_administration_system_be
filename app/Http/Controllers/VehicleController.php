@@ -13,15 +13,9 @@ class VehicleController extends Controller
      */
     public function index()
     {
-        //
-    }
+        $vehicles = Vehicle::orderBy('id', 'desc')->paginate(10);
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+        return response()->json($vehicles, 200);
     }
 
     /**
@@ -29,38 +23,44 @@ class VehicleController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validatedData = $request->validate(Vehicle::validationRules());
+
+        $vehicle = Vehicle::create($validatedData);
+
+        return response()->json(['message' => 'Vehicle created successfully', 'data' => $vehicle], 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Vehicle $vehicle)
+    public function show($id)
     {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Vehicle $vehicle)
-    {
-        //
+        $vehicle = Vehicle::findOrFail($id);
+        return response()->json(['vehicle' => $vehicle]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Vehicle $vehicle)
+    public function update(Request $request, $id)
     {
-        //
+        $vehicle = Vehicle::findOrFail($id);
+
+        $validatedData = $request->validate(Vehicle::validationRules());
+
+        $vehicle->update($validatedData);
+
+        return response()->json(['message' => 'Vehicle updated successfully', 'data' => $vehicle], 200);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Vehicle $vehicle)
+    public function destroy($id)
     {
-        //
+        $vehicle = Vehicle::findOrFail($id);
+        $vehicle->delete();
+
+        return response()->json(['message' => 'Vehicle deleted successfully'], 200);
     }
 }

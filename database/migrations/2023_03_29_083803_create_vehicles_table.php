@@ -35,8 +35,8 @@ return new class extends Migration
             $table->double('dinner_per_day',11,2)->nullable();
             $table->double('ot_per_hour',11,2)->nullable();
             $table->double('tour_allowance_per_night',11,2)->nullable();
-            $table->integer('is_available')->default(1)->comment('0=unavailable, 1= available');
-            $table->integer('is_active')->default(1)->comment('0=inactive, 1= active');
+            $table->boolean('is_available')->default(true)->comment('0=unavailable, 1= available');
+            $table->boolean('is_active')->default(true)->comment('0=inactive, 1= active');
             $table->softDeletes();
             $table->timestamps();
         });
