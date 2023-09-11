@@ -43,7 +43,7 @@ class Driver extends Model
      * Validation helper.
      *
      */
-    public function validationRules()
+    public static function validationRules()
     {
         return [
             'company_id' => 'nullable|exists:companies,id',
