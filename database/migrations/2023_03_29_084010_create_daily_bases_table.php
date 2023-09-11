@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('daily_bases', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+            $table->unsignedBigInteger('company_id')->nullable();d
             $table->unsignedBigInteger('vehicle_id')->nullable();
             $table->unsignedBigInteger('driver_id')->nullable();
             $table->unsignedBigInteger('vendor_id')->nullable();

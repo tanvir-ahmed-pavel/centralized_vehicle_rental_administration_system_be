@@ -43,7 +43,7 @@ class Driver extends Model
      * Validation helper.
      *
      */
-    public function validate()
+    public function validationRules()
     {
         return [
             'company_id' => 'nullable|exists:companies,id',
@@ -54,7 +54,7 @@ class Driver extends Model
             'email' => 'nullable|email|max:255',
             'mobile_no' => 'nullable|string|max:50',
             'driving_license_no' => 'nullable|string|max:255',
-            'licence_expiry_date' => 'nullable|date',
+            'license_expiry_date' => 'nullable|date',
             'nid' => 'nullable|string|max:255',
             'is_available' => 'boolean',
             'address' => 'nullable|string',

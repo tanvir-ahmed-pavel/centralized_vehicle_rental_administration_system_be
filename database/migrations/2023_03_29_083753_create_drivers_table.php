@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('email')->nullable();
             $table->string('mobile_no',50)->nullable();
             $table->string('driving_license_no')->nullable();
-            $table->date('licence_expiry_date')->nullable();
+            $table->date('license_expiry_date')->nullable();
             $table->string('nid')->nullable();
             $table->boolean('is_available')->default(true)->comment('0=unavailable, 1= available');
             $table->text('address')->nullable();
