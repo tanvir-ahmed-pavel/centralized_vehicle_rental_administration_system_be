@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Vehicle;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class VehicleController extends Controller
 {
@@ -25,10 +26,25 @@ class VehicleController extends Controller
     {
         $validatedData = $request->validate(Vehicle::validationRules());
 
-        $vehicle = Vehicle::create($validatedData);
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        $company = $user->company;
+
+        if (!$company) {
+            return response()->json(['error' => 'Company not found for the user'], 404);
+        }
+
+        $vehicle = new Vehicle($validatedData);
+        $vehicle->company_id = $company->id;
+        $vehicle->save();
 
         return response()->json(['message' => 'Vehicle created successfully', 'data' => $vehicle], 201);
     }
+
 
     /**
      * Display the specified resource.

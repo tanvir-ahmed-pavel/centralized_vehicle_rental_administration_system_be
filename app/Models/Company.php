@@ -17,22 +17,56 @@ class Company extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-//        'name',
-//        'email',
-//        'password',
+        'user_id',
+        'name',
+        'email',
+        'website',
+        'mobile_no',
+        'tel_no',
+        'trade_license_no',
+        'tin_no',
+        'bin_no',
+        'address',
+        'city',
+        'state',
+        'zip_code',
+        'country',
+        'contact_person_name',
+        'contact_person_mobile_no',
+        'contact_person_email',
+        'contact_person_nid',
+        'contact_person_designation',
+        'is_active',
     ];
 
     /**
      * Validation helper.
      *
      */
-    public function validate()
+    public static function validationRules()
     {
-        return Validator::make($this->attributes, [
-//            'name' => 'required|max:255',
-//            'description' => 'required|max:255',
-//            'price' => 'required|numeric|min:0',
-        ]);
+        return [
+            'user_id' => 'nullable|exists:users,id',
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'website' => 'nullable|string|max:50',
+            'mobile_no' => 'nullable|string|max:50',
+            'tel_no' => 'nullable|string|max:50',
+            'trade_license_no' => 'nullable|string|max:255',
+            'tin_no' => 'nullable|string|max:255',
+            'bin_no' => 'nullable|string|max:255',
+            'address' => 'nullable|string',
+            'city' => 'nullable|string|max:30',
+            'state' => 'nullable|string|max:30',
+            'zip_code' => 'nullable|string|max:30',
+            'country' => 'nullable|string',
+            'contact_person_name' => 'nullable|string|max:50',
+            'contact_person_mobile_no' => 'nullable|string|max:50',
+            'contact_person_email' => 'nullable|email|max:255',
+            'contact_person_nid' => 'nullable|string|max:255',
+            'contact_person_designation' => 'nullable|string|max:50',
+            'is_active' => 'boolean',
+        ];
     }
 
 //    Events for cascading on delete
@@ -42,5 +76,35 @@ class Company extends Model
 //        static::deleted(function ($invoice) {
 //            $invoice->payments()->delete();
 //        });
+    }
+
+    public function user()
+    {
+        return $this->hasOne(User::class);
+    }
+
+    public function clients()
+    {
+        return $this->hasMany(Client::class);
+    }
+
+    public function vendors()
+    {
+        return $this->hasMany(Vendor::class);
+    }
+
+    public function vehicles()
+    {
+        return $this->hasMany(Vehicle::class);
+    }
+
+    public function drivers()
+    {
+        return $this->hasMany(Driver::class);
+    }
+
+    public function dailyBases()
+    {
+        return $this->hasMany(DailyBasis::class);
     }
 }

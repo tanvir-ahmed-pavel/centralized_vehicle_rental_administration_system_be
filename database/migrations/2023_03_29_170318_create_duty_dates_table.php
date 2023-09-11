@@ -13,6 +13,12 @@ return new class extends Migration
     {
         Schema::create('duty_dates', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('daily_basis_id')->nullable();
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
+            $table->boolean('is_half_day')->default(false)->nullable();
+
+            $table->softDeletes();
             $table->timestamps();
         });
     }

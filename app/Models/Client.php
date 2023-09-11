@@ -81,4 +81,19 @@ class Client extends Model
 //            $invoice->payments()->delete();
 //        });
     }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class, 'company_id');
+    }
+
+    public function clientGroup()
+    {
+        return $this->belongsTo(ClientGroup::class, 'client_group_id');
+    }
+
+    public function dailyBases()
+    {
+        return $this->hasMany(DailyBasis::class);
+    }
 }

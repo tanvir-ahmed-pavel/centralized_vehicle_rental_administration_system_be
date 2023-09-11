@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\FuelPayment;
-use App\Http\Controllers\Controller;
+use App\Models\AdvancePayment;
 use Illuminate\Http\Request;
 
-class FuelPaymentController extends Controller
+class AdvancePaymentController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -35,7 +34,7 @@ class FuelPaymentController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(FuelPayment $fuelPayment)
+    public function show(AdvancePayment $advancePayment)
     {
         //
     }
@@ -43,7 +42,7 @@ class FuelPaymentController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(FuelPayment $fuelPayment)
+    public function edit(AdvancePayment $advancePayment)
     {
         //
     }
@@ -51,7 +50,7 @@ class FuelPaymentController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, FuelPayment $fuelPayment)
+    public function update(Request $request, AdvancePayment $advancePayment)
     {
         //
     }
@@ -59,7 +58,7 @@ class FuelPaymentController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(FuelPayment $fuelPayment)
+    public function destroy(AdvancePayment $advancePayment)
     {
         //
     }

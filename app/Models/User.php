@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Laravel\Passport\HasApiTokens;
 
 
@@ -22,7 +23,9 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'company_id',
         'email',
+        'role_id',
         'password',
     ];
 
@@ -30,13 +33,21 @@ class User extends Authenticatable
      * Validation helper.
      *
      */
-    public function validate()
+    public static function validationRules($userId = null)
     {
-        return Validator::make($this->attributes, [
-//            'name' => 'required|max:255',
-//            'description' => 'required|max:255',
-//            'price' => 'required|numeric|min:0',
-        ]);
+        return [
+            'name' => 'required|string|max:255',
+            'company_name' => 'required|string|max:255',
+            'company_id' => 'nullable|exists:companies,id',
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('users')->ignore($userId),
+            ],
+            'role_id' => 'integer|min:0',
+            'password' => 'required|string|min:8',
+        ];
     }
 
     /**
@@ -57,4 +68,9 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 }

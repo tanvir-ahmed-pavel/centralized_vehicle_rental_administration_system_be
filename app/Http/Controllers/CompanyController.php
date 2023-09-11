@@ -9,58 +9,72 @@ use Illuminate\Http\Request;
 class CompanyController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Get a paginated list of company records.
+     *
+     * @return \Illuminate\Http\JsonResponse
      */
     public function index()
     {
-        //
+        $companies = Company::orderBy('id', 'desc')->paginate(10);
+        return response()->json($companies, 200);
     }
 
     /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
+     * Create a new company record.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
     {
-        //
+        $validatedData = $request->validate(Company::validationRules());
+
+        $company = Company::create($validatedData);
+
+        return response()->json(['message' => 'Company record created successfully', 'data' => $company], 201);
     }
 
     /**
-     * Display the specified resource.
+     * Get the details of a specific company record.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function show(Company $company)
+    public function show($id)
     {
-        //
+        $company = Company::findOrFail($id);
+        return response()->json(['data' => $company]);
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Update a company record.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function edit(Company $company)
+    public function update(Request $request, $id)
     {
-        //
+        $company = Company::findOrFail($id);
+
+        $validatedData = $request->validate(Company::validationRules());
+
+        $company->update($validatedData);
+
+        return response()->json(['message' => 'Company record updated successfully', 'data' => $company], 200);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Delete a company record.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function update(Request $request, Company $company)
+    public function destroy($id)
     {
-        //
-    }
+        $company = Company::findOrFail($id);
+        $company->delete();
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Company $company)
-    {
-        //
+        return response()->json(['message' => 'Company record deleted successfully'], 200);
     }
 }

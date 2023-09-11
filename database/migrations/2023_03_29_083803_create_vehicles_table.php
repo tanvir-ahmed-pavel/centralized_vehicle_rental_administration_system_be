@@ -27,12 +27,13 @@ return new class extends Migration
             $table->string('reg_no', 50)->nullable();
             $table->string('engine_cc', 50)->nullable();
             $table->string('no_of_seat', 50)->nullable();
-            $table->double('per_km_rate',11,2)->nullable();
-            $table->double('body_rate_per_day',11,2)->nullable();
-            $table->double('package_rate_per_day',11,2)->nullable();
+            $table->double('per_km_rent',11,2)->nullable();
+            $table->double('body_rent_per_day',11,2)->nullable();
+            $table->double('package_rent_per_day',11,2)->nullable();
             $table->double('package_km_limit_per_day',11,2)->nullable();
             $table->double('lunch_per_day',11,2)->nullable();
-            $table->double('dinner_per_day',11,2)->nullable();
+            $table->double('dinner_per_day',11,2)
+                ->nullable();
             $table->double('ot_per_hour',11,2)->nullable();
             $table->double('tour_allowance_per_night',11,2)->nullable();
             $table->boolean('is_available')->default(true)->comment('0=unavailable, 1= available');

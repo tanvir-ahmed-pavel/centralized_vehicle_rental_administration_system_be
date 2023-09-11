@@ -82,4 +82,24 @@ class Vendor extends Model
 //            $invoice->payments()->delete();
 //        });
     }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class, 'company_id');
+    }
+
+    public function drivers()
+    {
+        return $this->hasMany(Driver::class);
+    }
+
+    public function vehicles()
+    {
+        return $this->hasMany(Vehicle::class);
+    }
+
+    public function dailyBases()
+    {
+        return $this->hasMany(DailyBasis::class);
+    }
 }

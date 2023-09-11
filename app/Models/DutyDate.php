@@ -16,31 +16,32 @@ class DutyDate extends Model
      *
      * @var array<int, string>
      */
+    use SoftDeletes;
+
     protected $fillable = [
-//        'name',
-//        'email',
-//        'password',
+        'daily_basis_id',
+        'start_date',
+        'end_date',
+        'is_half_day',
     ];
+
 
     /**
      * Validation helper.
      *
      */
-    public function validate()
+    public static function validationRules()
     {
-        return Validator::make($this->attributes, [
-//            'name' => 'required|max:255',
-//            'description' => 'required|max:255',
-//            'price' => 'required|numeric|min:0',
-        ]);
+        return [
+            'daily_basis_id' => 'nullable|exists:daily_bases,id',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date',
+            'is_half_day' => 'boolean',
+        ];
     }
 
-//    Events for cascading on delete
-    protected static function boot() {
-        parent::boot();
-
-//        static::deleted(function ($invoice) {
-//            $invoice->payments()->delete();
-//        });
+    public function dailyBasis()
+    {
+        return $this->belongsTo(DailyBasis::class);
     }
 }

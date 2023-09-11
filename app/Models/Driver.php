@@ -76,4 +76,23 @@ class Driver extends Model
 //            $invoice->payments()->delete();
 //        });
     }
+
+    public function vehicle()
+    {
+        return $this->hasOne(Vehicle::class);
+    }
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
+    }
+
+    public function dailyBases()
+    {
+        return $this->hasMany(DailyBasis::class);
+    }
 }

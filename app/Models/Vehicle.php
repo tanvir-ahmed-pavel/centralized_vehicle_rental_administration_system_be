@@ -80,4 +80,27 @@ class Vehicle extends Model
 //            $invoice->payments()->delete();
 //        });
     }
+
+    // Vehicle.php
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function driver()
+    {
+        return $this->belongsTo(Driver::class);
+    }
+
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
+    }
+
+    public function dailyBases()
+    {
+        return $this->hasMany(DailyBasis::class);
+    }
+
 }

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('fuel_payments', function (Blueprint $table) {
+        Schema::create('advance_payments', function (Blueprint $table) {
             $table->id();
             $table->timestamps();
         });
@@ -22,6 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('fuel_payments');
+        Schema::dropIfExists('advance_payments');
     }
 };

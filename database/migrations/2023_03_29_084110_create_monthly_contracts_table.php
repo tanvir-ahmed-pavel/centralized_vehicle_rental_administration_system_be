@@ -13,6 +13,26 @@ return new class extends Migration
     {
         Schema::create('monthly_contracts', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('company_id')->nullable();
+            $table->unsignedBigInteger('vehicle_id')->nullable();
+            $table->unsignedBigInteger('driver_id')->nullable();
+            $table->unsignedBigInteger('vendor_id')->nullable();
+            $table->unsignedBigInteger('client_id')->nullable();
+            $table->unsignedBigInteger('status_id')->nullable();
+
+            $table->enum('fuel_type', array('Octane', 'Diesel', 'Petrol', 'LPG', 'CNG'));
+            $table->double('per_km_rate',11,2)->nullable();
+            $table->double('body_rent_per_month',11,2)->nullable();
+            $table->double('lunch_per_day',11,2)->nullable();
+            $table->double('dinner_per_day',11,2)->nullable();
+            $table->double('ot_per_hour',11,2)->nullable();
+            $table->double('tour_allowance_per_night',11,2)->nullable();
+
+            $table->text('duty_description')->nullable();
+
+            $table->boolean('is_package')->default(false)->comment('0=false, 1= true');
+            $table->boolean('is_active')->default(true)->comment('0=inactive, 1= active');
+            $table->softDeletes();
             $table->timestamps();
         });
     }
