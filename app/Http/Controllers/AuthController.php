@@ -103,7 +103,7 @@ class AuthController extends Controller
         $user = Auth::user();
 
         return response()->json([
-            "user"  => $user,
+            "user"  => $user->with("company")->first(),
             "token"  => $request->bearerToken(),
         ], 200);
     }
