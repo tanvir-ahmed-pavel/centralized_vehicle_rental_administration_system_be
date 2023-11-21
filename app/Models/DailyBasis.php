@@ -47,10 +47,10 @@ class DailyBasis extends Model
     {
         return [
             'company_id' => 'nullable|exists:companies,id',
-            'vehicle_id' => 'nullable|exists:vehicles,id',
-            'driver_id' => 'nullable|exists:drivers,id',
+            'vehicle_id' => 'required|exists:vehicles,id',
+            'driver_id' => 'required|exists:drivers,id',
             'vendor_id' => 'nullable|exists:vendors,id',
-            'client_id' => 'nullable|exists:clients,id',
+            'client_id' => 'required|exists:clients,id',
             'status_id' => 'nullable|exists:statuses,id',
             'fuel_type' => ['required', Rule::in(['Octane', 'Diesel', 'Petrol', 'LPG', 'CNG'])],
             'per_km_rate' => 'nullable|numeric|min:0',
@@ -65,6 +65,15 @@ class DailyBasis extends Model
             'remarks' => 'nullable|string',
             'is_package' => 'boolean',
             'is_active' => 'boolean',
+            'vendor_per_km_rate' => 'nullable|numeric|min:0',
+            'vendor_body_rent_per_day' => 'nullable|numeric|min:0',
+            'vendor_package_rent_per_day' => 'nullable|numeric|min:0',
+            'vendor_package_km_limit_per_day' => 'nullable|numeric|min:0',
+            'vendor_lunch_per_day' => 'nullable|numeric|min:0',
+            'vendor_dinner_per_day' => 'nullable|numeric|min:0',
+            'vendor_ot_per_hour' => 'nullable|numeric|min:0',
+            'vendor_tour_allowance_per_night' => 'nullable|numeric|min:0',
+            'duty_dates' => ['required', 'array', 'min:1'],
         ];
     }
 
@@ -100,6 +109,11 @@ class DailyBasis extends Model
     public function driver()
     {
         return $this->belongsTo(Driver::class);
+    }
+
+    public function vehicle()
+    {
+        return $this->belongsTo(Vehicle::class);
     }
 
 }

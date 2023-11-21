@@ -35,6 +35,14 @@ return new class extends Migration
             $table->double('dinner_per_day',11,2)->default(0);
             $table->double('ot_per_hour',11,2)->default(0);
             $table->double('tour_allowance_per_night',11,2)->default(0);
+            $table->double('vendor_per_km_rate',11,2)->default(0);
+            $table->double('vendor_body_rent_per_day',11,2)->default(0);
+            $table->double('vendor_package_rent_per_day',11,2)->default(0);
+            $table->double('vendor_package_km_limit_per_day',11,2)->default(0);
+            $table->double('vendor_lunch_per_day',11,2)->default(0);
+            $table->double('vendor_dinner_per_day',11,2)->default(0);
+            $table->double('vendor_ot_per_hour',11,2)->default(0);
+            $table->double('vendor_tour_allowance_per_night',11,2)->default(0);
             $table->boolean('is_available')->default(true)->comment('0=unavailable, 1= available');
             $table->boolean('is_active')->default(true)->comment('0=inactive, 1= active');
             $table->softDeletes();

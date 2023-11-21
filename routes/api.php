@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\DailyBasisController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VendorController;
@@ -32,4 +33,6 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('vendors', VendorController::class);
     Route::apiResource('vehicles', VehicleController::class);
     Route::apiResource('drivers', DriverController::class);
+
+    Route::apiResource('dailyBasis', DailyBasisController::class);
 });

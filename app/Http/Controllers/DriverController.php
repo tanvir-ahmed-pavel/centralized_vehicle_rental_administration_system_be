@@ -3,20 +3,53 @@
 namespace App\Http\Controllers;
 
 use App\Models\Driver;
-use App\Http\Controllers\Controller;
+use App\Traits\DataMapping;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class DriverController extends Controller
 {
+    use DataMapping;
+
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $drivers = Driver::orderBy('id', 'desc')->paginate(10);
+        // Set default values for pagination if not provided in the request
+        $page = $request->has('page') ? $request->page : 1;
+        $perPage = $request->has('per_page') ? $request->per_page : 10;
 
-        return response()->json($drivers, 200);
+        // Set default values for sorting if not provided in the request
+        $sortBy = $request->has('sort_by') ? $request->sort_by : 'id';
+        $sortOrder = $request->has('sort_order') ? $request->sort_order : 'desc';
+
+        $company = Auth::user()->company;
+
+        $drivers = $company->drivers()->with(['vendor'])->orderBy($sortBy, $sortOrder)->paginate($perPage, ['*'], 'page', $page);
+
+        // Map the data to the desired structure
+        $mappedData = $drivers->map(function ($driver) {
+            return [
+                'id' => $driver->id,
+                'name' => $driver->name,
+                'mobile_no' => $driver->mobile_no,
+                'license_number' => $driver->license_number,
+                'is_available' => $driver->is_available,
+                'vendor' => [
+                    'id' => optional($driver->vendor)->id,
+                    'name' => optional($driver->vendor)->name,
+                ],
+                'company_id' => $driver->company_id,
+                'created_at' => $driver->created_at,
+                'updated_at' => $driver->updated_at,
+            ];
+        });
+
+        return response()->json([
+            'message' => 'Driver records retrieved successfully',
+            'data' => $this->mapData($drivers, $mappedData),
+        ], 200);
     }
 
     /**
@@ -24,7 +57,7 @@ class DriverController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate(Driver::validationRules());
+        $validatedData = $request->validate(Vehicle::validationRules());
 
         $user = Auth::user();
 
@@ -38,13 +71,10 @@ class DriverController extends Controller
             return response()->json(['error' => 'Company not found for the user'], 404);
         }
 
-        $driver = new Driver($validatedData);
-        $driver->company_id = $company->id;
-        $driver->save();
+        $driver = $company->drivers()->create($validatedData);
 
         return response()->json(['message' => 'Driver created successfully', 'data' => $driver], 201);
     }
-
 
     /**
      * Display the specified resource.
@@ -52,7 +82,7 @@ class DriverController extends Controller
     public function show($id)
     {
         $driver = Driver::findOrFail($id);
-        return response()->json(['data' => $driver],200);
+        return response()->json(['data' => $driver], 200);
     }
 
     /**
