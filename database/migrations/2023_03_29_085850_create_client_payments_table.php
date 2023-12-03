@@ -13,7 +13,21 @@ return new class extends Migration
     {
         Schema::create('client_payments', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('company_id')->nullable();
+            $table->unsignedBigInteger('daily_basis_id')->nullable();
+            $table->unsignedBigInteger('monthly_contract_id')->nullable();
+            $table->unsignedBigInteger('client_id')->nullable();
+            $table->unsignedBigInteger('client_invoice_id')->nullable();
+            $table->unsignedBigInteger('chart_of_acc_id')->nullable();
+            $table->date('date');
+            $table->decimal('amount', 10, 2);
+            $table->enum('payment_method', ['Cash', 'Cheque', 'Bank Transfer', 'Mobile Banking (Bkash, Nadag, etc.)', 'Card']);
+            $table->string('payment_ref')->nullable();
+            $table->string('payment_number')->nullable();
+            $table->text('remarks')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

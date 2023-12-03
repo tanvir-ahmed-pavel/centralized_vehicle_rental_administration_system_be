@@ -17,9 +17,17 @@ class InvoiceItem extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-//        'name',
-//        'email',
-//        'password',
+        'invoice_id',
+        'description',
+        'quantity',
+        'unit',
+        'unit_rate',
+        'tax_percent',
+        'vat_percent',
+        'tax_amount',
+        'vat_amount',
+        'total_amount',
+        'remarks',
     ];
 
     /**

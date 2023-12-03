@@ -13,6 +13,21 @@ return new class extends Migration
     {
         Schema::create('invoice_items', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('client_invoice_id')->nullable();
+            $table->unsignedBigInteger('vendor_invoice_id')->nullable();
+            $table->unsignedBigInteger('driver_invoice_id')->nullable();
+
+            $table->string('description');
+            $table->integer('quantity')->default(0);
+            $table->string('unit');
+            $table->decimal('unit_rate', 10, 2)->default(0);
+            $table->decimal('tax_percent', 5, 2)->default(0);
+            $table->decimal('vat_percent', 5, 2)->default(0);
+            $table->decimal('tax_amount', 10, 2)->default(0);
+            $table->decimal('vat_amount', 10, 2)->default(0);
+            $table->decimal('total_amount', 10, 2)->default(0);
+            $table->text('remarks')->nullable();
+            $table->softDeletes();
             $table->timestamps();
         });
     }

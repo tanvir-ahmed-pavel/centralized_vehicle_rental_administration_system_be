@@ -33,6 +33,14 @@ class DailyBasis extends Model
         'dinner_per_day',
         'ot_per_hour',
         'tour_allowance_per_night',
+        'vendor_per_km_rate',
+        'vendor_body_rent_per_day',
+        'vendor_package_rent_per_day',
+        'vendor_package_km_limit_per_day',
+        'vendor_lunch_per_day',
+        'vendor_dinner_per_day',
+        'vendor_ot_per_hour',
+        'vendor_tour_allowance_per_night',
         'duty_description',
         'remarks',
         'is_package',
@@ -94,6 +102,27 @@ class DailyBasis extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function clientInvoices()
+    {
+        return $this->hasMany(ClientInvoice::class);
+    }
+
+    public function clientInvoicePayments()
+    {
+        return $this->hasMany(ClientPayment::class);
+    }
+
+
+    public function vendorInvoices()
+    {
+        return $this->hasMany(VendorInvoice::class);
+    }
+
+    public function driverInvoices()
+    {
+        return $this->hasMany(DriverInvoice::class);
     }
 
     public function vendor()

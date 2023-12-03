@@ -38,7 +38,6 @@ class VehicleController extends Controller
             return [
                 'id' => $vehicle->id,
                 'name' => $vehicle->name,
-                'model' => $vehicle->model,
                 'reg_no' => $vehicle->reg_no,
                 'vehicle_owner' => $vehicle->vehicle_owner,
                 'fuel_type' => $vehicle->fuel_type,
@@ -62,10 +61,12 @@ class VehicleController extends Controller
                 'vendor_dinner_per_day' => $vehicle->vendor_dinner_per_day,
                 'vendor_ot_per_hour' => $vehicle->vendor_ot_per_hour,
                 'vendor_tour_allowance_per_night' => $vehicle->vendor_tour_allowance_per_night,
+                'vendor_id' => $vehicle->vendor_id,
                 'vendor' => [
                     'id' => optional($vehicle->vendor)->id,
                     'name' => optional($vehicle->vendor)->name,
                 ],
+                'driver_id' => $vehicle->driver_id,
                 'driver' => [
                     'id' => optional($vehicle->driver)->id,
                     'name' => optional($vehicle->driver)->name,
@@ -105,7 +106,53 @@ class VehicleController extends Controller
 
         $vehicle = $company->vehicles()->create($validatedData);
 
-        return response()->json(['message' => 'Vehicle created successfully', 'data' => $vehicle], 201);
+        $vehicle->with(['vendor', 'driver']);
+
+        $mappedData =[
+                'id' => $vehicle->id,
+                'name' => $vehicle->name,
+                'model' => $vehicle->model,
+                'reg_no' => $vehicle->reg_no,
+                'vehicle_owner' => $vehicle->vehicle_owner,
+                'fuel_type' => $vehicle->fuel_type,
+                'brand' => $vehicle->brand,
+                'model_year' => $vehicle->model_year,
+                'engine_cc' => $vehicle->engine_cc,
+                'no_of_seat' => $vehicle->no_of_seat,
+                'per_km_rate' => $vehicle->per_km_rate,
+                'body_rent_per_day' => $vehicle->body_rent_per_day,
+                'package_rent_per_day' => $vehicle->package_rent_per_day,
+                'package_km_limit_per_day' => $vehicle->package_km_limit_per_day,
+                'lunch_per_day' => $vehicle->lunch_per_day,
+                'dinner_per_day' => $vehicle->dinner_per_day,
+                'ot_per_hour' => $vehicle->ot_per_hour,
+                'tour_allowance_per_night' => $vehicle->tour_allowance_per_night,
+                'vendor_per_km_rate' => $vehicle->vendor_per_km_rate,
+                'vendor_body_rent_per_day' => $vehicle->vendor_body_rent_per_day,
+                'vendor_package_rent_per_day' => $vehicle->vendor_package_rent_per_day,
+                'vendor_package_km_limit_per_day' => $vehicle->vendor_package_km_limit_per_day,
+                'vendor_lunch_per_day' => $vehicle->vendor_lunch_per_day,
+                'vendor_dinner_per_day' => $vehicle->vendor_dinner_per_day,
+                'vendor_ot_per_hour' => $vehicle->vendor_ot_per_hour,
+                'vendor_tour_allowance_per_night' => $vehicle->vendor_tour_allowance_per_night,
+                'vendor_id' => $vehicle->vendor_id,
+                'vendor' => [
+                    'id' => optional($vehicle->vendor)->id,
+                    'name' => optional($vehicle->vendor)->name,
+                ],
+                'driver_id' => $vehicle->driver_id,
+                'driver' => [
+                    'id' => optional($vehicle->driver)->id,
+                    'name' => optional($vehicle->driver)->name,
+                    'mobile' => optional($vehicle->driver)->mobile_no,
+                ],
+                'is_available' => $vehicle->is_available,
+                'status' => $vehicle->status,
+                'created_at' => $vehicle->created_at,
+                'updated_at' => $vehicle->updated_at,
+            ];
+
+        return response()->json(['message' => 'Vehicle created successfully', 'data' => $mappedData], 201);
     }
 
     /**
@@ -128,7 +175,53 @@ class VehicleController extends Controller
 
         $vehicle->update($validatedData);
 
-        return response()->json(['message' => 'Vehicle updated successfully', 'data' => $vehicle], 200);
+        $vehicle->with(['vendor', 'driver']);
+
+        $mappedData =[
+            'id' => $vehicle->id,
+            'name' => $vehicle->name,
+            'model' => $vehicle->model,
+            'reg_no' => $vehicle->reg_no,
+            'vehicle_owner' => $vehicle->vehicle_owner,
+            'fuel_type' => $vehicle->fuel_type,
+            'brand' => $vehicle->brand,
+            'model_year' => $vehicle->model_year,
+            'engine_cc' => $vehicle->engine_cc,
+            'no_of_seat' => $vehicle->no_of_seat,
+            'per_km_rate' => $vehicle->per_km_rate,
+            'body_rent_per_day' => $vehicle->body_rent_per_day,
+            'package_rent_per_day' => $vehicle->package_rent_per_day,
+            'package_km_limit_per_day' => $vehicle->package_km_limit_per_day,
+            'lunch_per_day' => $vehicle->lunch_per_day,
+            'dinner_per_day' => $vehicle->dinner_per_day,
+            'ot_per_hour' => $vehicle->ot_per_hour,
+            'tour_allowance_per_night' => $vehicle->tour_allowance_per_night,
+            'vendor_per_km_rate' => $vehicle->vendor_per_km_rate,
+            'vendor_body_rent_per_day' => $vehicle->vendor_body_rent_per_day,
+            'vendor_package_rent_per_day' => $vehicle->vendor_package_rent_per_day,
+            'vendor_package_km_limit_per_day' => $vehicle->vendor_package_km_limit_per_day,
+            'vendor_lunch_per_day' => $vehicle->vendor_lunch_per_day,
+            'vendor_dinner_per_day' => $vehicle->vendor_dinner_per_day,
+            'vendor_ot_per_hour' => $vehicle->vendor_ot_per_hour,
+            'vendor_tour_allowance_per_night' => $vehicle->vendor_tour_allowance_per_night,
+            'vendor_id' => $vehicle->vendor_id,
+            'vendor' => [
+                'id' => optional($vehicle->vendor)->id,
+                'name' => optional($vehicle->vendor)->name,
+            ],
+            'driver_id' => $vehicle->driver_id,
+            'driver' => [
+                'id' => optional($vehicle->driver)->id,
+                'name' => optional($vehicle->driver)->name,
+                'mobile' => optional($vehicle->driver)->mobile_no,
+            ],
+            'is_available' => $vehicle->is_available,
+            'status' => $vehicle->status,
+            'created_at' => $vehicle->created_at,
+            'updated_at' => $vehicle->updated_at,
+        ];
+
+        return response()->json(['message' => 'Vehicle updated successfully', 'data' => $mappedData], 200);
     }
 
     /**

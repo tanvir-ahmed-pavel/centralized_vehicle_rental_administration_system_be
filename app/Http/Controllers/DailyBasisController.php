@@ -40,20 +40,24 @@ class DailyBasisController extends Controller
         $mappedData = $dailyBases->map(function ($dailyBasis) {
             return [
                 'id' => $dailyBasis->id,
+                'client_id' => $dailyBasis->client_id,
                 'client' => [
                     'id' => $dailyBasis->client->id,
                     'name' => $dailyBasis->client->name,
                 ],
+                'vendor_id' => $dailyBasis->vendor_id,
                 'vendor' => [
                     'id' => optional($dailyBasis->vendor)->id,
                     'name' => optional($dailyBasis->vendor)->name,
                 ],
+                'vehicle_id' => $dailyBasis->vehicle_id,
                 'vehicle' => [
                     'id' => $dailyBasis->vehicle->id,
                     'name' => $dailyBasis->vehicle->name,
                     'model' => $dailyBasis->vehicle->model,
                     'reg' => $dailyBasis->vehicle->reg_no,
                 ],
+                'driver_id' => $dailyBasis->driver_id,
                 'driver' => [
                     'id' => $dailyBasis->driver->id,
                     'name' => $dailyBasis->driver->name,
@@ -105,6 +109,7 @@ class DailyBasisController extends Controller
         // Create the daily basis record
         $dailyBasis = $company->dailyBases()->create($validatedData);
 
+
         // Create duty date records if provided in the request
         if ($request->has('duty_dates') && is_array($request->duty_dates)) {
 
@@ -116,9 +121,48 @@ class DailyBasisController extends Controller
             }
         }
 
+        $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor']);
+
+        $mappedData = [
+            'id' => $dailyBasis->id,
+            'client_id' => $dailyBasis->client_id,
+            'client' => [
+                'id' => $dailyBasis->client->id,
+                'name' => $dailyBasis->client->name,
+            ],
+            'vendor_id' => $dailyBasis->vendor_id,
+            'vendor' => [
+                'id' => optional($dailyBasis->vendor)->id,
+                'name' => optional($dailyBasis->vendor)->name,
+            ],
+            'vehicle_id' => $dailyBasis->vehicle_id,
+            'vehicle' => [
+                'id' => $dailyBasis->vehicle->id,
+                'name' => $dailyBasis->vehicle->name,
+                'model' => $dailyBasis->vehicle->model,
+                'reg' => $dailyBasis->vehicle->reg_no,
+            ],
+            'driver_id' => $dailyBasis->driver_id,
+            'driver' => [
+                'id' => $dailyBasis->driver->id,
+                'name' => $dailyBasis->driver->name,
+                'mobile' => $dailyBasis->driver->mobile_no,
+            ],
+            'duty_dates' => $dailyBasis->dutyDates->map(function ($dutyDate) {
+                return [
+                    'id' => $dutyDate->id,
+                    'start_date' => $dutyDate->start_date,
+                    'end_date' => $dutyDate->end_date,
+                    'is_half_day' => $dutyDate->is_half_day,
+                ];
+            }),
+            'created_at' => $dailyBasis->created_at,
+            'status' => $dailyBasis->status,
+        ];
+
         return response()->json([
             'message' => 'Daily basis record created successfully',
-            'data' => $dailyBasis,
+            'data' => $mappedData,
         ], 201);
     }
 
@@ -131,7 +175,16 @@ class DailyBasisController extends Controller
     public function show($id)
     {
         $dailyBasis = DailyBasis::findOrFail($id);
-        return response()->json(['data' => $dailyBasis]);
+        // Check if the dailyBasis belongs to the logged-in user's company
+        $user = Auth::user();
+        if (!$user->company || $dailyBasis->company_id !== $user->company->id) {
+            return response()->json(['error' => 'DailyBasis not found or unauthorized'], 404);
+        }
+
+        $dailyBasis->load(['client:id,name', 'vehicle:id,name,model_year as model,reg_no as reg', 'driver:id,name,mobile_no as mobile', 'dutyDates', 'vendor:id,name']);
+//        $dailyBasis = $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor'])
+
+        return response()->json(['message' => 'Daily basis retrieved successfully', 'data' => $dailyBasis], 200);
     }
 
     /**
@@ -158,7 +211,46 @@ class DailyBasisController extends Controller
             ]);
         }
 
-        return response()->json(['message' => 'Daily basis record updated successfully', 'data' => $dailyBasis], 200);
+        $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor']);
+
+        $mappedData = [
+            'id' => $dailyBasis->id,
+            'client_id' => $dailyBasis->client_id,
+            'client' => [
+                'id' => $dailyBasis->client->id,
+                'name' => $dailyBasis->client->name,
+            ],
+            'vendor_id' => $dailyBasis->vendor_id,
+            'vendor' => [
+                'id' => optional($dailyBasis->vendor)->id,
+                'name' => optional($dailyBasis->vendor)->name,
+            ],
+            'vehicle_id' => $dailyBasis->vehicle_id,
+            'vehicle' => [
+                'id' => $dailyBasis->vehicle->id,
+                'name' => $dailyBasis->vehicle->name,
+                'model' => $dailyBasis->vehicle->model,
+                'reg' => $dailyBasis->vehicle->reg_no,
+            ],
+            'driver_id' => $dailyBasis->driver_id,
+            'driver' => [
+                'id' => $dailyBasis->driver->id,
+                'name' => $dailyBasis->driver->name,
+                'mobile' => $dailyBasis->driver->mobile_no,
+            ],
+            'duty_dates' => $dailyBasis->dutyDates->map(function ($dutyDate) {
+                return [
+                    'id' => $dutyDate->id,
+                    'start_date' => $dutyDate->start_date,
+                    'end_date' => $dutyDate->end_date,
+                    'is_half_day' => $dutyDate->is_half_day,
+                ];
+            }),
+            'created_at' => $dailyBasis->created_at,
+            'status' => $dailyBasis->status,
+        ];
+
+        return response()->json(['message' => 'Daily basis record updated successfully', 'data' => $mappedData], 200);
     }
 
     /**

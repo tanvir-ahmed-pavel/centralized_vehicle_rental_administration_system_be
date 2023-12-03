@@ -96,4 +96,13 @@ class Client extends Model
     {
         return $this->hasMany(DailyBasis::class);
     }
+
+    public function invoices()
+    {
+        return $this->hasMany(ClientInvoice::class);
+    }
+    public function payments()
+    {
+        return $this->hasMany(ClientPayment::class);
+    }
 }

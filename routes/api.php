@@ -2,8 +2,11 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\ClientInvoiceController;
+use App\Http\Controllers\ClientPaymentController;
 use App\Http\Controllers\DailyBasisController;
 use App\Http\Controllers\DriverController;
+use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VendorController;
 use Illuminate\Http\Request;
@@ -35,4 +38,16 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('drivers', DriverController::class);
 
     Route::apiResource('dailyBasis', DailyBasisController::class);
+
+    Route::apiResource('clientInvoices', ClientInvoiceController::class);
+
+    Route::resource('clientInvoicePayments', ClientPaymentController::class);
+    Route::get('clientInvoicePayments/invoice/{id}', [ClientPaymentController::class, 'getPaymentByInvoice']);
+
+    Route::name('resource.')->prefix('resource')->group(function() {
+        Route::get("getDriverList", [ResourceController::class, "getDriverList"])->name("driverList");
+        Route::get("getClientList", [ResourceController::class, "getClientList"])->name("clientList");
+        Route::get("getVehicleList", [ResourceController::class, "getVehicleList"])->name("vehicleList");
+        Route::get("getVendorList", [ResourceController::class, "getVendorList"])->name("vendorList");
+    });
 });

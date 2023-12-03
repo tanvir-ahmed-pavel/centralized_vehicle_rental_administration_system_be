@@ -52,7 +52,7 @@ class VendorController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate(Vehicle::validationRules());
+        $validatedData = $request->validate(Vendor::validationRules());
 
         $user = Auth::user();
 
@@ -68,7 +68,18 @@ class VendorController extends Controller
 
         $vendor = $company->vendors()->create($validatedData);
 
-        return response()->json(['message' => 'Vendor created successfully', 'data' => $vendor], 201);
+        $mappedData = [
+                'id' => $vendor->id,
+                'name' => $vendor->name,
+                'mobile_no' => $vendor->mobile_no,
+                'current_balance' => $vendor->current_balance,
+                'vendor_type' => $vendor->vendor_type,
+                'company_id' => $vendor->company_id,
+                'created_at' => $vendor->created_at,
+                'updated_at' => $vendor->updated_at,
+            ];
+
+        return response()->json(['message' => 'Vendor created successfully', 'data' => $mappedData], 201);
     }
 
     /**
@@ -91,7 +102,18 @@ class VendorController extends Controller
 
         $vendor->update($validatedData);
 
-        return response()->json(['message' => 'Vendor updated successfully', 'data' => $vendor], 200);
+        $mappedData = [
+            'id' => $vendor->id,
+            'name' => $vendor->name,
+            'mobile_no' => $vendor->mobile_no,
+            'current_balance' => $vendor->current_balance,
+            'vendor_type' => $vendor->vendor_type,
+            'company_id' => $vendor->company_id,
+            'created_at' => $vendor->created_at,
+            'updated_at' => $vendor->updated_at,
+        ];
+
+        return response()->json(['message' => 'Vendor updated successfully', 'data' => $mappedData], 200);
     }
 
     /**

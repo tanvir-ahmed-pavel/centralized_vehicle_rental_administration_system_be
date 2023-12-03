@@ -36,6 +36,7 @@ class DriverController extends Controller
                 'mobile_no' => $driver->mobile_no,
                 'license_number' => $driver->license_number,
                 'is_available' => $driver->is_available,
+                'vendor_id' => $driver->vendeor_id,
                 'vendor' => [
                     'id' => optional($driver->vendor)->id,
                     'name' => optional($driver->vendor)->name,
@@ -57,7 +58,7 @@ class DriverController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate(Vehicle::validationRules());
+        $validatedData = $request->validate(Driver::validationRules());
 
         $user = Auth::user();
 
@@ -72,8 +73,25 @@ class DriverController extends Controller
         }
 
         $driver = $company->drivers()->create($validatedData);
+        $driver->with(["vendor"]);
 
-        return response()->json(['message' => 'Driver created successfully', 'data' => $driver], 201);
+        $mappedData = [
+            'id' => $driver->id,
+            'name' => $driver->name,
+            'mobile_no' => $driver->mobile_no,
+            'license_number' => $driver->license_number,
+            'is_available' => $driver->is_available,
+            'vendor_id' => $driver->vendeor_id,
+            'vendor' => [
+                'id' => optional($driver->vendor)->id,
+                'name' => optional($driver->vendor)->name,
+            ],
+            'company_id' => $driver->company_id,
+            'created_at' => $driver->created_at,
+            'updated_at' => $driver->updated_at,
+        ];
+
+        return response()->json(['message' => 'Driver created successfully', 'data' => $mappedData], 201);
     }
 
     /**
@@ -95,8 +113,25 @@ class DriverController extends Controller
         $validatedData = $request->validate(Driver::validationRules());
 
         $driver->update($validatedData);
+        $driver->with(["vendor"]);
 
-        return response()->json(['message' => 'Driver updated successfully', 'data' => $driver], 200);
+        $mappedData = [
+            'id' => $driver->id,
+            'name' => $driver->name,
+            'mobile_no' => $driver->mobile_no,
+            'license_number' => $driver->license_number,
+            'is_available' => $driver->is_available,
+            'vendor_id' => $driver->vendeor_id,
+            'vendor' => [
+                'id' => optional($driver->vendor)->id,
+                'name' => optional($driver->vendor)->name,
+            ],
+            'company_id' => $driver->company_id,
+            'created_at' => $driver->created_at,
+            'updated_at' => $driver->updated_at,
+        ];
+
+        return response()->json(['message' => 'Driver updated successfully', 'data' => $mappedData], 200);
     }
 
     /**

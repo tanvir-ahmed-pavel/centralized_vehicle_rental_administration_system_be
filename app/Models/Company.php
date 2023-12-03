@@ -107,4 +107,13 @@ class Company extends Model
     {
         return $this->hasMany(DailyBasis::class);
     }
+
+    public function clientInvoices()
+    {
+        return $this->hasMany(ClientInvoice::class);
+    }
+    public function clientInvoicePayments()
+    {
+        return $this->hasMany(ClientPayment::class);
+    }
 }
