@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Traits\DataMapping;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ClientInvoiceController extends Controller
 {
@@ -54,6 +55,7 @@ class ClientInvoiceController extends Controller
             return [
                 'id' => $clientInvoice->id,
                 'invoice_date' => $clientInvoice->invoice_date,
+                'invoice_number' => $clientInvoice->invoice_number,
                 'due_date' => $clientInvoice->due_date,
                 'daily_basis_id' => $clientInvoice->daily_basis_id,
                 'monthly_contract_id' => $clientInvoice->monthly_contract_id,
@@ -98,84 +100,95 @@ class ClientInvoiceController extends Controller
      */
     public function store(Request $request)
     {
-        // Validate the request data
-        $validatedData = $request->validate(ClientInvoice::validationRules());
+        return DB::transaction(function () use ($request) {
+            // Validate the request data
+            $validatedData = $request->validate(ClientInvoice::validationRules());
 
-        $user = Auth::user();
+            $user = Auth::user();
 
-        if (!$user) {
-            return response()->json(['error' => 'User not found'], 404);
-        }
-
-        $company = $user->company;
-
-        if (!$company) {
-            return response()->json(['error' => 'Company not found for the user'], 404);
-        }
-
-        // Create the client invoice record
-        $clientInvoice = $company->clientInvoices()->create($validatedData);
-
-        // Create invoice item records if provided in the request
-        if ($request->has('invoice_items') && is_array($request->invoice_items)) {
-            foreach ($request->invoice_items as $itemData) {
-                $clientInvoice->invoiceItems()->create($itemData);
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404);
             }
-        }
 
-        // Load relationships for the response
-        $clientInvoice->load(['dailyBasis', 'monthlyContract', 'vehicle', 'client', 'driver', 'invoiceItems']);
+            $company = $user->company;
 
-        // Map the data to the desired structure
-        $mappedData = [
-            'id' => $clientInvoice->id,
-            'invoice_date' => $clientInvoice->invoice_date,
-            'due_date' => $clientInvoice->due_date,
-            'daily_basis_id' => $clientInvoice->daily_basis_id,
-            'monthly_contract_id' => $clientInvoice->monthly_contract_id,
-            'client_id' => $clientInvoice->client_id,
-            'client' => [
-                'id' => $clientInvoice->client->id,
-                'name' => $clientInvoice->client->name,
-                'address' => $clientInvoice->client->address,
-                'mobile_no' => $clientInvoice->client->mobile_no,
-            ],
-            'vehicle_id' => $clientInvoice->vehicle_id,
-            'vehicle' => [
-                'id' => $clientInvoice->vehicle->id,
-                'name' => $clientInvoice->vehicle->name,
-                'model' => $clientInvoice->vehicle->model,
-                'reg' => $clientInvoice->vehicle->reg_no,
-            ],
-            'driver_id' => $clientInvoice->driver_id,
-            'driver' => [
-                'id' => $clientInvoice->driver->id,
-                'name' => $clientInvoice->driver->name,
-                'mobile_no' => $clientInvoice->driver->mobile_no,
-            ],
-            'invoice_items' => $clientInvoice->invoiceItems->map(function ($item) {
-                return [
-                    'id' => $item->id,
-                    'description' => $item->description,
-                    'quantity' => $item->quantity,
-                    'unit' => $item->unit,
-                    'unit_rate' => $item->unit_rate,
-                    'tax_percent' => $item->tax_percent,
-                    'vat_percent' => $item->vat_percent,
-                    'tax_amount' => $item->tax_amount,
-                    'vat_amount' => $item->vat_amount,
-                    'total_amount' => $item->total_amount,
-                    'remarks' => $item->remarks
-                ];
-            }),
-            'created_at' => $clientInvoice->created_at,
-            'status' => $clientInvoice->status,
-        ];
+            if (!$company) {
+                return response()->json(['error' => 'Company not found for the user'], 404);
+            }
 
-        return response()->json([
-            'message' => 'Client invoice created successfully',
-            'data' => $mappedData,
-        ], 201);
+            // Create the client invoice record
+            $clientInvoice = $company->clientInvoices()->create($validatedData);
+
+            // Create invoice item records if provided in the request
+            if ($request->has('invoice_items') && is_array($request->invoice_items)) {
+                foreach ($request->invoice_items as $itemData) {
+                    $clientInvoice->invoiceItems()->create($itemData);
+                }
+            }
+
+            // Load relationships for the response
+            $clientInvoice->load(['dailyBasis', 'monthlyContract', 'vehicle', 'client', 'driver', 'invoiceItems']);
+
+            // Generate invoice number
+            $clientInvoice->invoice_number = $clientInvoice->generateInvoiceNumber("Daily", $clientInvoice->client->name, $clientInvoice->id, $clientInvoice->daily_basis_id);
+            $clientInvoice->save();
+
+            // Update client balance by increasing the grand_total amount of the invoice
+            $client = $clientInvoice->client;
+            $client->current_balance += $clientInvoice->grand_total;
+            $client->save();
+
+            // Map the data to the desired structure
+            $mappedData = [
+                'id' => $clientInvoice->id,
+                'invoice_date' => $clientInvoice->invoice_date,
+                'due_date' => $clientInvoice->due_date,
+                'daily_basis_id' => $clientInvoice->daily_basis_id,
+                'monthly_contract_id' => $clientInvoice->monthly_contract_id,
+                'client_id' => $clientInvoice->client_id,
+                'client' => [
+                    'id' => $clientInvoice->client->id,
+                    'name' => $clientInvoice->client->name,
+                    'address' => $clientInvoice->client->address,
+                    'mobile_no' => $clientInvoice->client->mobile_no,
+                ],
+                'vehicle_id' => $clientInvoice->vehicle_id,
+                'vehicle' => [
+                    'id' => $clientInvoice->vehicle->id,
+                    'name' => $clientInvoice->vehicle->name,
+                    'model' => $clientInvoice->vehicle->model,
+                    'reg' => $clientInvoice->vehicle->reg_no,
+                ],
+                'driver_id' => $clientInvoice->driver_id,
+                'driver' => [
+                    'id' => $clientInvoice->driver->id,
+                    'name' => $clientInvoice->driver->name,
+                    'mobile_no' => $clientInvoice->driver->mobile_no,
+                ],
+                'invoice_items' => $clientInvoice->invoiceItems->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'description' => $item->description,
+                        'quantity' => $item->quantity,
+                        'unit' => $item->unit,
+                        'unit_rate' => $item->unit_rate,
+                        'tax_percent' => $item->tax_percent,
+                        'vat_percent' => $item->vat_percent,
+                        'tax_amount' => $item->tax_amount,
+                        'vat_amount' => $item->vat_amount,
+                        'total_amount' => $item->total_amount,
+                        'remarks' => $item->remarks
+                    ];
+                }),
+                'created_at' => $clientInvoice->created_at,
+                'status' => $clientInvoice->status,
+            ];
+
+            return response()->json([
+                'message' => 'Client invoice created successfully',
+                'data' => $mappedData,
+            ], 201);
+        });
     }
 
     /**
@@ -202,6 +215,7 @@ class ClientInvoiceController extends Controller
             'id' => $clientInvoice->id,
             'invoice_date' => $clientInvoice->invoice_date,
             'due_date' => $clientInvoice->due_date,
+            'invoice_number' => $clientInvoice->invoice_number,
             'daily_basis_id' => $clientInvoice->daily_basis_id,
             'monthly_contract_id' => $clientInvoice->monthly_contract_id,
             'grand_total' => $clientInvoice->grand_total,
@@ -260,75 +274,78 @@ class ClientInvoiceController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $company = Auth::user()->company;
-        $clientInvoice = $company->clientInvoices()->findOrFail($id);
+        return DB::transaction(function () use ($request,$id) {
+            $company = Auth::user()->company;
+            $clientInvoice = $company->clientInvoices()->findOrFail($id);
 
-        // Validate the request data
-        $validatedData = $request->validate(ClientInvoice::validationRules());
+            // Validate the request data
+            $validatedData = $request->validate(ClientInvoice::validationRules());
 
-        // Update the client invoice record
-        $clientInvoice->update($validatedData);
+            // Update the client invoice record
+            $clientInvoice->update($validatedData);
 
-        // Update or create invoice item records if provided in the request
-        if ($request->has('invoice_items') && is_array($request->invoice_items)) {
-            foreach ($request->invoice_items as $itemData) {
-                $clientInvoice->invoiceItems()->updateOrCreate(['id' => $itemData['id']], $itemData);
+            // Update or create invoice item records if provided in the request
+            if ($request->has('invoice_items') && is_array($request->invoice_items)) {
+                foreach ($request->invoice_items as $itemData) {
+                    $clientInvoice->invoiceItems()->updateOrCreate(['id' => $itemData['id']], $itemData);
+                }
             }
-        }
 
-        // Load relationships for the response
-        $clientInvoice->load(['dailyBasis', 'monthlyContract', 'vehicle', 'client', 'driver', 'invoiceItems']);
+            // Load relationships for the response
+            $clientInvoice->load(['dailyBasis', 'monthlyContract', 'vehicle', 'client', 'driver', 'invoiceItems']);
 
-        // Map the data to the desired structure
-        $mappedData = [
-            'id' => $clientInvoice->id,
-            'invoice_date' => $clientInvoice->invoice_date,
-            'due_date' => $clientInvoice->due_date,
-            'daily_basis_id' => $clientInvoice->daily_basis_id,
-            'monthly_contract_id' => $clientInvoice->monthly_contract_id,
-            'client_id' => $clientInvoice->client_id,
-            'client' => [
-                'id' => $clientInvoice->client->id,
-                'name' => $clientInvoice->client->name,
-                'address' => $clientInvoice->client->address,
-                'mobile_no' => $clientInvoice->client->mobile_no,
-            ],
-            'vehicle_id' => $clientInvoice->vehicle_id,
-            'vehicle' => [
-                'id' => $clientInvoice->vehicle->id,
-                'name' => $clientInvoice->vehicle->name,
-                'model' => $clientInvoice->vehicle->model,
-                'reg' => $clientInvoice->vehicle->reg_no,
-            ],
-            'driver_id' => $clientInvoice->driver_id,
-            'driver' => [
-                'id' => $clientInvoice->driver->id,
-                'name' => $clientInvoice->driver->name,
-                'mobile_no' => $clientInvoice->driver->mobile_no,
-            ],
-            'invoice_items' => $clientInvoice->invoiceItems->map(function ($item) {
-                return [
-                    'id' => $item->id,
-                    'description' => $item->description,
-                    'quantity' => $item->quantity,
-                    'unit' => $item->unit,
-                    'unit_rate' => $item->unit_rate,
-                    'tax_percent' => $item->tax_percent,
-                    'vat_percent' => $item->vat_percent,
-                    'tax_amount' => $item->tax_amount,
-                    'vat_amount' => $item->vat_amount,
-                    'total_amount' => $item->total_amount,
-                    'remarks' => $item->remarks
-                ];
-            }),
-            'created_at' => $clientInvoice->created_at,
-            'status' => $clientInvoice->status,
-        ];
+            // Map the data to the desired structure
+            $mappedData = [
+                'id' => $clientInvoice->id,
+                'invoice_date' => $clientInvoice->invoice_date,
+                'due_date' => $clientInvoice->due_date,
+                'invoice_number' => $clientInvoice->invoice_number,
+                'daily_basis_id' => $clientInvoice->daily_basis_id,
+                'monthly_contract_id' => $clientInvoice->monthly_contract_id,
+                'client_id' => $clientInvoice->client_id,
+                'client' => [
+                    'id' => $clientInvoice->client->id,
+                    'name' => $clientInvoice->client->name,
+                    'address' => $clientInvoice->client->address,
+                    'mobile_no' => $clientInvoice->client->mobile_no,
+                ],
+                'vehicle_id' => $clientInvoice->vehicle_id,
+                'vehicle' => [
+                    'id' => $clientInvoice->vehicle->id,
+                    'name' => $clientInvoice->vehicle->name,
+                    'model' => $clientInvoice->vehicle->model,
+                    'reg' => $clientInvoice->vehicle->reg_no,
+                ],
+                'driver_id' => $clientInvoice->driver_id,
+                'driver' => [
+                    'id' => $clientInvoice->driver->id,
+                    'name' => $clientInvoice->driver->name,
+                    'mobile_no' => $clientInvoice->driver->mobile_no,
+                ],
+                'invoice_items' => $clientInvoice->invoiceItems->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'description' => $item->description,
+                        'quantity' => $item->quantity,
+                        'unit' => $item->unit,
+                        'unit_rate' => $item->unit_rate,
+                        'tax_percent' => $item->tax_percent,
+                        'vat_percent' => $item->vat_percent,
+                        'tax_amount' => $item->tax_amount,
+                        'vat_amount' => $item->vat_amount,
+                        'total_amount' => $item->total_amount,
+                        'remarks' => $item->remarks
+                    ];
+                }),
+                'created_at' => $clientInvoice->created_at,
+                'status' => $clientInvoice->status,
+            ];
 
-        return response()->json([
-            'message' => 'Client invoice updated successfully',
-            'data' => $mappedData,
-        ], 200);
+            return response()->json([
+                'message' => 'Client invoice updated successfully',
+                'data' => $mappedData,
+            ], 200);
+        });
     }
 
     /**
@@ -337,11 +354,33 @@ class ClientInvoiceController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
+
     public function destroy($id)
     {
-        $clientInvoice = ClientInvoice::findOrFail($id);
-        $clientInvoice->delete();
+        return DB::transaction(function () use ($id) {
+            $clientInvoice = ClientInvoice::findOrFail($id);
 
-        return response()->json(['message' => 'Client invoice deleted successfully'], 200);
+            // Check if the clientInvoice belongs to the logged-in user's company
+            $user = Auth::user();
+            if (!$user->company || $clientInvoice->company_id !== $user->company->id) {
+                return response()->json(['error' => 'ClientInvoice not found or unauthorized'], 404);
+            }
+
+            // Check if the invoice has any associated payments
+            $paymentsCount = $clientInvoice->payments()->count();
+            if ($paymentsCount > 0) {
+                return response()->json(['error' => 'Cannot delete invoice with associated payments'], 400);
+            }
+
+            // Update client balance by deducting the total amount of the invoice
+            $client = $clientInvoice->client;
+            $client->current_balance -= $clientInvoice->grand_total;
+            $client->save();
+
+            // Perform the deletion
+            $clientInvoice->delete();
+
+            return response()->json(['message' => 'Client invoice deleted successfully'], 200);
+        });
     }
 }

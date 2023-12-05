@@ -24,6 +24,7 @@ class ClientInvoice extends Model
         'client_id',
         'driver_id',
         'status_id',
+        'invoice_number',
         'invoice_date',
         'due_date',
         'sub_total',
@@ -58,6 +59,7 @@ class ClientInvoice extends Model
             'driver_id' => 'nullable|exists:drivers,id',
             'status_id' => 'nullable|exists:statuses,id',
             'invoice_date' => 'required|date',
+            'invoice_number' => 'nullable|string',
             'due_date' => 'nullable|date',
             'sub_total' => 'required|numeric',
             'advance_amount' => 'required|numeric',
@@ -85,28 +87,29 @@ class ClientInvoice extends Model
     }
 
     /**
-     * Generate payment number based on the specified pattern.
+     * Generate invoice number based on the specified pattern.
      *
      * @param string $basisType
      * @param string $clientName
      * @param int $invoiceId
      * @return string
      */
-    public static function generatePaymentNumber($basisType, $clientName, $invoiceId)
+    public static function generateInvoiceNumber($basisType, $clientName, $invoiceId, $bookingId)
     {
         $clientNameInitials = implode('', array_map(function ($word) {
             return strtoupper(substr($word, 0, 1));
         }, explode(' ', $clientName)));
 
         $invoiceIdPrefix = str_pad($invoiceId, 3, '0', STR_PAD_LEFT);
+        $bookingIdPrefix = str_pad($bookingId, 3, '0', STR_PAD_LEFT);
 
         $currentYearLastTwoDigits = date('y');
 
         if ($basisType === 'Daily') {
-            return "DBI-{$clientNameInitials}-{$currentYearLastTwoDigits}-{$invoiceIdPrefix}";
+            return "DBI-C-{$clientNameInitials}-{$currentYearLastTwoDigits}-B{$bookingIdPrefix}-{$invoiceIdPrefix}";
         } elseif ($basisType === 'Monthly') {
             $currentMonth = date('m');
-            return "MBI-{$clientNameInitials}-{$currentMonth}{$currentYearLastTwoDigits}-{$invoiceIdPrefix}";
+            return "MBI-C-{$clientNameInitials}-{$currentMonth}{$currentYearLastTwoDigits}-B{$bookingIdPrefix}-{$invoiceIdPrefix}";
         } else {
             // Handle other basis types if needed
             return '';
