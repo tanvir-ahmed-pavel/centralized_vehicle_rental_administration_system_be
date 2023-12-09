@@ -213,7 +213,8 @@ class ClientInvoiceController extends Controller
         }
 
         // Load relationships for the response
-        $clientInvoice->load(['dailyBasis', 'monthlyContract', 'vehicle', 'client', 'driver', 'invoiceItems']);
+        $clientInvoice->load(['dailyBasis', 'monthlyContract', 'vehicle', 'client', 'driver', 'invoiceItems'])
+            ->loadCount("payments");
 
         // Map the data to the desired structure
         $mappedData = [
@@ -225,6 +226,14 @@ class ClientInvoiceController extends Controller
             'monthly_contract_id' => $clientInvoice->monthly_contract_id,
             'grand_total' => $clientInvoice->grand_total,
             'total_paid' => $clientInvoice->total_paid,
+            'advance_amount' => $clientInvoice->advance_amount,
+            'discount_amount' => $clientInvoice->discount_amount,
+            'vat_amount' => $clientInvoice->vat_amount,
+            'vat_percent' => $clientInvoice->vat_percent,
+            'tax_amount' => $clientInvoice->tax_amount,
+            'tax_percent' => $clientInvoice->tax_percent,
+            'round_adjustment' => $clientInvoice->round_adjustment,
+            'round_total' => $clientInvoice->round_total,
             'client_id' => $clientInvoice->client_id,
             'client' => [
                 'id' => $clientInvoice->client->id,
@@ -260,6 +269,8 @@ class ClientInvoiceController extends Controller
                     'remarks' => $item->remarks
                 ];
             }),
+            'payments_count' => $clientInvoice->payments_count,
+            'is_active' => $clientInvoice->is_active,
             'created_at' => $clientInvoice->created_at,
             'status' => $clientInvoice->status,
         ];
@@ -280,16 +291,27 @@ class ClientInvoiceController extends Controller
     public function update(Request $request, $id)
     {
         return DB::transaction(function () use ($request,$id) {
-            $company = Auth::user()->company;
-            $clientInvoice = $company->clientInvoices()->findOrFail($id);
+
+            $clientInvoice = ClientInvoice::findOrFail($id);
+
+            // Check if the clientPayment belongs to the logged-in user's company
+            $user = Auth::user();
+            if (!$user->company || $clientInvoice->company_id !== $user->company->id) {
+                return response()->json(['error' => 'Client invoice not found or unauthorized'], 404);
+            }
 
             // Validate the request data
             $validatedData = $request->validate(ClientInvoice::validationRules());
+
+//            deduct old amount from client balance
+            $client = $clientInvoice->client;
+            $client->current_balance -= $clientInvoice->grand_total;
 
             // Update the client invoice record
             $clientInvoice->update($validatedData);
 
             // Update or create invoice item records if provided in the request
+            $clientInvoice->invoiceItems()->delete();
             if ($request->has('invoice_items') && is_array($request->invoice_items)) {
                 foreach ($request->invoice_items as $itemData) {
                     $clientInvoice->invoiceItems()->updateOrCreate(['id' => $itemData['id']], $itemData);
@@ -298,6 +320,15 @@ class ClientInvoiceController extends Controller
 
             // Load relationships for the response
             $clientInvoice->load(['dailyBasis', 'monthlyContract', 'vehicle', 'client', 'driver', 'invoiceItems']);
+
+            // Update client balance by increasing the grand_total amount of the invoice
+            $client->current_balance += $clientInvoice->grand_total;
+            $client->save();
+
+            // Update daily basis status
+            $dailyBasis = $clientInvoice->dailyBasis;
+            $dailyBasis->status = "Invoice Created & Awaiting Payment";
+            $dailyBasis->save();
 
             // Map the data to the desired structure
             $mappedData = [

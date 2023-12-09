@@ -281,9 +281,18 @@ class DailyBasisController extends Controller
      */
     public function destroy($id)
     {
-        $dailyBasis = DailyBasis::findOrFail($id);
-        $dailyBasis->delete();
+        return DB::transaction(function () use ($id) {
+            $dailyBasis = DailyBasis::findOrFail($id);
 
-        return response()->json(['message' => 'Daily basis record deleted successfully'], 200);
+            // Check if there are any associated invoices
+            if ($dailyBasis->clientInvoices()->exists()) {
+                return response()->json(['error' => 'Daily basis record cannot be deleted as it has associated invoices'], 422);
+            }
+
+            // No associated invoices, proceed with deletion
+            $dailyBasis->delete();
+
+            return response()->json(['message' => 'Daily basis record deleted successfully'], 200);
+        });
     }
 }
