@@ -138,6 +138,11 @@ class ClientInvoiceController extends Controller
             $client->current_balance += $clientInvoice->grand_total;
             $client->save();
 
+            // Update daily basis status
+            $dailyBasis = $clientInvoice->dailyBasis;
+            $dailyBasis->status = "Invoice Created & Awaiting Payment";
+            $dailyBasis->save();
+
             // Map the data to the desired structure
             $mappedData = [
                 'id' => $clientInvoice->id,
@@ -376,6 +381,11 @@ class ClientInvoiceController extends Controller
             $client = $clientInvoice->client;
             $client->current_balance -= $clientInvoice->grand_total;
             $client->save();
+
+            // Update daily basis status
+            $dailyBasis = $clientInvoice->dailyBasis;
+            $dailyBasis->status = "To Make Invoice";
+            $dailyBasis->save();
 
             // Perform the deletion
             $clientInvoice->delete();

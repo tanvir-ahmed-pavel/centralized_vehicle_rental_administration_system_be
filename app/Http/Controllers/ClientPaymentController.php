@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ClientInvoice;
 use App\Models\ClientPayment;
+use App\Models\DailyBasis;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -105,15 +106,28 @@ class ClientPaymentController extends Controller
             // Create the client payment record
             $clientPayment = $company->clientInvoicePayments()->create($validatedData);
 
-            // Update total_paid in ClientInvoice
+            // Update total_paid  and status in ClientInvoice and dailybasis
             $invoice = ClientInvoice::findOrFail($clientPayment->client_invoice_id);
+            $dailyBasis = DailyBasis::findOrFail($clientPayment->daily_basis_id);
             $invoice->total_paid += $clientPayment->amount;
+            $invoice->save();
+
+            if($invoice->total_paid>0 && $invoice->total_paid < $invoice->grand_total){
+                $invoice->status = "Partially Paid";
+                $dailyBasis->status = "Partially Paid";
+            } elseif ($invoice->total_paid >= $invoice->grand_total){
+                $invoice->status = "Paid";
+                $dailyBasis->status = "Paid & Closed";
+            }
+            $dailyBasis->save();
             $invoice->save();
 
             // Update client balance
             $client = $invoice->client;
             $client->current_balance -= $clientPayment->amount;
             $client->save();
+
+
 
             $clientPayment->load(['clientInvoice:id,client_id,total_paid,grand_total', 'clientInvoice.client:id,name']);
             $clientPayment->payment_number = $clientPayment->generatePaymentNumber("Daily", $clientPayment->clientInvoice->client->name, $clientPayment->client_invoice_id, $clientPayment->id);
@@ -185,8 +199,9 @@ class ClientPaymentController extends Controller
         return DB::transaction(function () use ($id) {
             $clientPayment = ClientPayment::findOrFail($id);
 
-            // Update total_paid in ClientInvoice
+            // Update total_paid  and status in ClientInvoice and dailybasis
             $invoice = ClientInvoice::findOrFail($clientPayment->client_invoice_id);
+            $dailyBasis = DailyBasis::findOrFail($clientPayment->daily_basis_id);
             $invoice->total_paid -= $clientPayment->amount;
             $invoice->save();
 
@@ -194,6 +209,19 @@ class ClientPaymentController extends Controller
             $client = $invoice->client;
             $client->current_balance += $clientPayment->amount;
             $client->save();
+
+            if($invoice->total_paid>0 && $invoice->total_paid<$invoice->grand_total){
+                $invoice->status = "Partially Paid";
+                $dailyBasis->status = "Partially Paid";
+            } elseif ($invoice->total_paid>=$invoice->grand_total){
+                $invoice->status = "Paid";
+                $dailyBasis->status = "Paid & Closed";
+            } else{
+                $invoice->status = "Created & Awaiting Payment";
+                $dailyBasis->status = "Invoice Created & Awaiting Payment";
+            }
+            $dailyBasis->save();
+            $invoice->save();
 
             $clientPayment->delete();
 

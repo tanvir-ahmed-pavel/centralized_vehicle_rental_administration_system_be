@@ -19,7 +19,8 @@ return new class extends Migration
             $table->unsignedBigInteger('vehicle_id')->nullable();
             $table->unsignedBigInteger('client_id')->nullable();
             $table->unsignedBigInteger('driver_id')->nullable();
-            $table->unsignedBigInteger('status_id')->nullable();
+
+            $table->enum('status', array('Created & Awaiting Payment', 'Partially Paid', 'Paid', 'Payment Overdue'))->default('Created & Awaiting Payment');
 
             $table->string('invoice_number')->nullable();
             $table->date('invoice_date');

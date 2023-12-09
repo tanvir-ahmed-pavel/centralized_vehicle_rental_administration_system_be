@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class ClientInvoice extends Model
 {
@@ -23,7 +24,7 @@ class ClientInvoice extends Model
         'vehicle_id',
         'client_id',
         'driver_id',
-        'status_id',
+        'status',
         'invoice_number',
         'invoice_date',
         'due_date',
@@ -57,7 +58,7 @@ class ClientInvoice extends Model
             'vehicle_id' => 'nullable|exists:vehicles,id',
             'client_id' => 'nullable|exists:clients,id',
             'driver_id' => 'nullable|exists:drivers,id',
-            'status_id' => 'nullable|exists:statuses,id',
+            'status' => ['nullable', Rule::in(['Created & Awaiting Payment', 'Partially Paid', 'Paid', 'Payment Overdue'])],
             'invoice_date' => 'required|date',
             'invoice_number' => 'nullable|string',
             'due_date' => 'nullable|date',

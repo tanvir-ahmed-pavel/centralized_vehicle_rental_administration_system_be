@@ -21,6 +21,7 @@ class Client extends Model
         'client_group_id',
         'client_type',
         'name',
+        'name',
         'email',
         'mobile_no',
         'tel_no',
@@ -61,7 +62,7 @@ class Client extends Model
             'city' => 'nullable|string|max:30',
             'state' => 'nullable|string|max:30',
             'zip_code' => 'nullable|string|max:30',
-            'country' => 'nullable', 'string', // Assuming 'countries' is the table name for your Country model
+            'country' => 'nullable', 'string',
             'contact_person_name' => 'nullable|string|max:50',
             'contact_person_mobile_no' => 'nullable|string|max:50',
             'contact_person_email' => 'nullable|email|max:255',

@@ -18,7 +18,8 @@ return new class extends Migration
             $table->unsignedBigInteger('driver_id')->nullable();
             $table->unsignedBigInteger('vendor_id')->nullable();
             $table->unsignedBigInteger('client_id')->nullable();
-            $table->unsignedBigInteger('status_id')->nullable();
+
+            $table->enum('status', array('Booking Created', 'On Duty', 'On Hold', 'To Make Invoice', "Invoice Created & Awaiting Payment", "Partially Paid", "Payment Overdue", "Paid & Closed"))->default("Booking Created");
 
             $table->string('fuel_type')->nullable();
             $table->double('per_km_rate',11,2)->default(0);

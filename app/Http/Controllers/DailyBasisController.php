@@ -8,6 +8,7 @@ use App\Models\DutyDate;
 use App\Traits\DataMapping;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 
 class DailyBasisController extends Controller
@@ -91,79 +92,81 @@ class DailyBasisController extends Controller
      */
     public function store(Request $request)
     {
-        // Validate the request data
-        $validatedData = $request->validate(DailyBasis::validationRules());
+        return DB::transaction(function () use ($request) {
+            // Validate the request data
+            $validatedData = $request->validate(DailyBasis::validationRules());
 
-        $user = Auth::user();
+            $user = Auth::user();
 
-        if (!$user) {
-            return response()->json(['error' => 'User not found'], 404);
-        }
-
-        $company = $user->company;
-
-        if (!$company) {
-            return response()->json(['error' => 'Company not found for the user'], 404);
-        }
-
-        // Create the daily basis record
-        $dailyBasis = $company->dailyBases()->create($validatedData);
-
-
-        // Create duty date records if provided in the request
-        if ($request->has('duty_dates') && is_array($request->duty_dates)) {
-
-            foreach ($request->duty_dates as $dutyDateData){
-                $dailyBasis->dutyDates()->create([
-                    "start_date" => $dutyDateData,
-                    "end_date" => $dutyDateData,
-                ]);
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404);
             }
-        }
 
-        $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor']);
+            $company = $user->company;
 
-        $mappedData = [
-            'id' => $dailyBasis->id,
-            'client_id' => $dailyBasis->client_id,
-            'client' => [
-                'id' => $dailyBasis->client->id,
-                'name' => $dailyBasis->client->name,
-            ],
-            'vendor_id' => $dailyBasis->vendor_id,
-            'vendor' => [
-                'id' => optional($dailyBasis->vendor)->id,
-                'name' => optional($dailyBasis->vendor)->name,
-            ],
-            'vehicle_id' => $dailyBasis->vehicle_id,
-            'vehicle' => [
-                'id' => $dailyBasis->vehicle->id,
-                'name' => $dailyBasis->vehicle->name,
-                'model' => $dailyBasis->vehicle->model,
-                'reg' => $dailyBasis->vehicle->reg_no,
-            ],
-            'driver_id' => $dailyBasis->driver_id,
-            'driver' => [
-                'id' => $dailyBasis->driver->id,
-                'name' => $dailyBasis->driver->name,
-                'mobile' => $dailyBasis->driver->mobile_no,
-            ],
-            'duty_dates' => $dailyBasis->dutyDates->map(function ($dutyDate) {
-                return [
-                    'id' => $dutyDate->id,
-                    'start_date' => $dutyDate->start_date,
-                    'end_date' => $dutyDate->end_date,
-                    'is_half_day' => $dutyDate->is_half_day,
-                ];
-            }),
-            'created_at' => $dailyBasis->created_at,
-            'status' => $dailyBasis->status,
-        ];
+            if (!$company) {
+                return response()->json(['error' => 'Company not found for the user'], 404);
+            }
 
-        return response()->json([
-            'message' => 'Daily basis record created successfully',
-            'data' => $mappedData,
-        ], 201);
+            // Create the daily basis record
+            $dailyBasis = $company->dailyBases()->create($validatedData);
+
+
+            // Create duty date records if provided in the request
+            if ($request->has('duty_dates') && is_array($request->duty_dates)) {
+
+                foreach ($request->duty_dates as $dutyDateData) {
+                    $dailyBasis->dutyDates()->create([
+                        "start_date" => $dutyDateData,
+                        "end_date" => $dutyDateData,
+                    ]);
+                }
+            }
+
+            $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor']);
+
+            $mappedData = [
+                'id' => $dailyBasis->id,
+                'client_id' => $dailyBasis->client_id,
+                'client' => [
+                    'id' => $dailyBasis->client->id,
+                    'name' => $dailyBasis->client->name,
+                ],
+                'vendor_id' => $dailyBasis->vendor_id,
+                'vendor' => [
+                    'id' => optional($dailyBasis->vendor)->id,
+                    'name' => optional($dailyBasis->vendor)->name,
+                ],
+                'vehicle_id' => $dailyBasis->vehicle_id,
+                'vehicle' => [
+                    'id' => $dailyBasis->vehicle->id,
+                    'name' => $dailyBasis->vehicle->name,
+                    'model' => $dailyBasis->vehicle->model,
+                    'reg' => $dailyBasis->vehicle->reg_no,
+                ],
+                'driver_id' => $dailyBasis->driver_id,
+                'driver' => [
+                    'id' => $dailyBasis->driver->id,
+                    'name' => $dailyBasis->driver->name,
+                    'mobile' => $dailyBasis->driver->mobile_no,
+                ],
+                'duty_dates' => $dailyBasis->dutyDates->map(function ($dutyDate) {
+                    return [
+                        'id' => $dutyDate->id,
+                        'start_date' => $dutyDate->start_date,
+                        'end_date' => $dutyDate->end_date,
+                        'is_half_day' => $dutyDate->is_half_day,
+                    ];
+                }),
+                'created_at' => $dailyBasis->created_at,
+                'status' => $dailyBasis->status,
+            ];
+
+            return response()->json([
+                'message' => 'Daily basis record created successfully',
+                'data' => $mappedData,
+            ], 201);
+        });
     }
 
     /**
@@ -196,61 +199,63 @@ class DailyBasisController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $company = Auth::user()->company;
-        $dailyBasis = $company->dailyBases()->findOrFail($id);
+        return DB::transaction(function () use ($request,$id) {
+            $company = Auth::user()->company;
+            $dailyBasis = $company->dailyBases()->findOrFail($id);
 
-        $validatedData = $request->validate(DailyBasis::validationRules());
+            $validatedData = $request->validate(DailyBasis::validationRules());
 
-        $dailyBasis->update($validatedData);
+            $dailyBasis->update($validatedData);
 
-        // Assuming 'duty_dates' is an array of date data
-        foreach ($request->duty_dates as $dutyDateData) {
-            $dailyBasis->dutyDates()->updateOrCreate([
-                "start_date" => $dutyDateData,
-                "end_date" => $dutyDateData,
-            ]);
-        }
+            // Assuming 'duty_dates' is an array of date data
+            foreach ($request->duty_dates as $dutyDateData) {
+                $dailyBasis->dutyDates()->updateOrCreate([
+                    "start_date" => $dutyDateData,
+                    "end_date" => $dutyDateData,
+                ]);
+            }
 
-        $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor']);
+            $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor']);
 
-        $mappedData = [
-            'id' => $dailyBasis->id,
-            'client_id' => $dailyBasis->client_id,
-            'client' => [
-                'id' => $dailyBasis->client->id,
-                'name' => $dailyBasis->client->name,
-            ],
-            'vendor_id' => $dailyBasis->vendor_id,
-            'vendor' => [
-                'id' => optional($dailyBasis->vendor)->id,
-                'name' => optional($dailyBasis->vendor)->name,
-            ],
-            'vehicle_id' => $dailyBasis->vehicle_id,
-            'vehicle' => [
-                'id' => $dailyBasis->vehicle->id,
-                'name' => $dailyBasis->vehicle->name,
-                'model' => $dailyBasis->vehicle->model,
-                'reg' => $dailyBasis->vehicle->reg_no,
-            ],
-            'driver_id' => $dailyBasis->driver_id,
-            'driver' => [
-                'id' => $dailyBasis->driver->id,
-                'name' => $dailyBasis->driver->name,
-                'mobile' => $dailyBasis->driver->mobile_no,
-            ],
-            'duty_dates' => $dailyBasis->dutyDates->map(function ($dutyDate) {
-                return [
-                    'id' => $dutyDate->id,
-                    'start_date' => $dutyDate->start_date,
-                    'end_date' => $dutyDate->end_date,
-                    'is_half_day' => $dutyDate->is_half_day,
-                ];
-            }),
-            'created_at' => $dailyBasis->created_at,
-            'status' => $dailyBasis->status,
-        ];
+            $mappedData = [
+                'id' => $dailyBasis->id,
+                'client_id' => $dailyBasis->client_id,
+                'client' => [
+                    'id' => $dailyBasis->client->id,
+                    'name' => $dailyBasis->client->name,
+                ],
+                'vendor_id' => $dailyBasis->vendor_id,
+                'vendor' => [
+                    'id' => optional($dailyBasis->vendor)->id,
+                    'name' => optional($dailyBasis->vendor)->name,
+                ],
+                'vehicle_id' => $dailyBasis->vehicle_id,
+                'vehicle' => [
+                    'id' => $dailyBasis->vehicle->id,
+                    'name' => $dailyBasis->vehicle->name,
+                    'model' => $dailyBasis->vehicle->model,
+                    'reg' => $dailyBasis->vehicle->reg_no,
+                ],
+                'driver_id' => $dailyBasis->driver_id,
+                'driver' => [
+                    'id' => $dailyBasis->driver->id,
+                    'name' => $dailyBasis->driver->name,
+                    'mobile' => $dailyBasis->driver->mobile_no,
+                ],
+                'duty_dates' => $dailyBasis->dutyDates->map(function ($dutyDate) {
+                    return [
+                        'id' => $dutyDate->id,
+                        'start_date' => $dutyDate->start_date,
+                        'end_date' => $dutyDate->end_date,
+                        'is_half_day' => $dutyDate->is_half_day,
+                    ];
+                }),
+                'created_at' => $dailyBasis->created_at,
+                'status' => $dailyBasis->status,
+            ];
 
-        return response()->json(['message' => 'Daily basis record updated successfully', 'data' => $mappedData], 200);
+            return response()->json(['message' => 'Daily basis record updated successfully', 'data' => $mappedData], 200);
+        });
     }
 
     /**

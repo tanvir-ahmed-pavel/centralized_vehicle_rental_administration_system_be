@@ -19,6 +19,7 @@ return new class extends Migration
             $table->enum('client_type', array('Company','Individual'));
             $table->string('name')->nullable();
             $table->string('email')->nullable();
+            $table->string('website',255)->nullable();
             $table->string('mobile_no',50)->nullable();
             $table->string('tel_no',50)->nullable();
 //            if client type company
@@ -34,7 +35,7 @@ return new class extends Migration
             $table->string('contact_person_mobile_no',50)->nullable();
             $table->string('contact_person_email')->nullable();
             $table->string('contact_person_nid')->nullable();
-            $table->string('contact_person_designation',50)->nullable();
+            $table->string('contact_person_designation',100)->nullable();
             $table->double('opening_balance',11,2)->default(0);
             $table->double('current_balance',11,2)->default(0);
 

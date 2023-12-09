@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Traits\ThrottlesAttempts;
 
@@ -15,17 +16,27 @@ class AuthController extends Controller
     use ThrottlesAttempts;
     public function register(Request $request)
     {
-        $validatedData = $request->validate(User::validationRules());
+        return DB::transaction(function () use ($request) {
 
-        // Create the user
-        $user = User::create([
-            'name' => $validatedData["name"],
-            'email' => $validatedData["email"],
-            'password' => bcrypt($validatedData["password"]),
-        ]);
+            $validatedData = $request->validate(User::validationRules());
 
-        // Create the company for the user
-        if($user){
+            // Create the user
+            $user = User::create([
+                'name' => $validatedData["name"],
+                'email' => $validatedData["email"],
+                'password' => bcrypt($validatedData["password"]),
+            ]);
+
+            // Create the company for the user
+            if ($user) {
+                $company = Company::create([
+                    'user_id' => $user->id,
+                    'name' => $request->company_name, // Use the company name from the request
+                ]);
+
+                $user->company()->associate($company); // Assign the company to the user
+                $user->save();
+            }
             $company = Company::create([
                 'user_id' => $user->id,
                 'name' => $request->company_name, // Use the company name from the request
@@ -33,22 +44,15 @@ class AuthController extends Controller
 
             $user->company()->associate($company); // Assign the company to the user
             $user->save();
-        }
-        $company = Company::create([
-            'user_id' => $user->id,
-            'name' => $request->company_name, // Use the company name from the request
-        ]);
 
-        $user->company()->associate($company); // Assign the company to the user
-        $user->save();
+            $token = $user->createToken('AccessToken')->accessToken;
 
-        $token = $user->createToken('AccessToken')->accessToken;
-
-        return response()->json([
-            'message' => 'User and Company created successfully',
-            "user"  => $user,
-            'token' => $token
-        ], 201);
+            return response()->json([
+                'message' => 'User and Company created successfully',
+                "user" => $user,
+                'token' => $token
+            ], 201);
+        });
     }
 
 
