@@ -40,4 +40,43 @@ class VendorInvoice extends Model
         parent::boot();
 
     }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function dailyBasis()
+    {
+        return $this->belongsTo(DailyBasis::class);
+    }
+
+    public function monthlyContract()
+    {
+        return $this->belongsTo(MonthlyContract::class);
+    }
+
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
+    }
+    public function vehicle()
+    {
+        return $this->hasMany(Vehicle::class);
+    }
+
+    public function driver()
+    {
+        return $this->hasMany(Driver::class);
+    }
+
+    public function invoiceItems()
+    {
+        return $this->hasMany(InvoiceItem::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(VendorPayment::class);
+    }
 }

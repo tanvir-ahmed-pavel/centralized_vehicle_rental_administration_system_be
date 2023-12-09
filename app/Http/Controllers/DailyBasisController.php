@@ -33,7 +33,7 @@ class DailyBasisController extends Controller
 
         // Fetch daily basis records based on the authenticated user's company and apply sorting
         $dailyBases = $company->dailyBases()
-            ->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor'])
+            ->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor'])->withCount("clientInvoices")
             ->orderBy($sortBy, $sortOrder)
             ->paginate($perPage, ['*'], 'page', $page);
 
@@ -72,6 +72,7 @@ class DailyBasisController extends Controller
                         'is_half_day' => $dutyDate->is_half_day,
                     ];
                 }),
+                'client_invoices_count' => $dailyBasis->client_invoices_count,
                 'created_at' => $dailyBasis->created_at,
                 'status' => $dailyBasis->status,
             ];
@@ -122,6 +123,7 @@ class DailyBasisController extends Controller
                     ]);
                 }
             }
+            $invoice_count = $dailyBasis->clientInvoices()->count();
 
             $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor']);
 
@@ -158,6 +160,7 @@ class DailyBasisController extends Controller
                         'is_half_day' => $dutyDate->is_half_day,
                     ];
                 }),
+                'invoice_count' => $invoice_count,
                 'created_at' => $dailyBasis->created_at,
                 'status' => $dailyBasis->status,
             ];
@@ -181,10 +184,14 @@ class DailyBasisController extends Controller
         // Check if the dailyBasis belongs to the logged-in user's company
         $user = Auth::user();
         if (!$user->company || $dailyBasis->company_id !== $user->company->id) {
-            return response()->json(['error' => 'DailyBasis not found or unauthorized'], 404);
+            return response()->json(['error' => 'Daily basis not found or unauthorized'], 404);
         }
 
-        $dailyBasis->load(['client:id,name', 'vehicle:id,name,model_year as model,reg_no as reg', 'driver:id,name,mobile_no as mobile', 'dutyDates', 'vendor:id,name']);
+        $dailyBasis->load(['client:id,name',
+            'vehicle:id,name,model_year as model,reg_no as reg',
+            'driver:id,name,mobile_no as mobile', 'dutyDates',
+            'vendor:id,name'])
+            ->loadCount("clientInvoices");
 //        $dailyBasis = $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor'])
 
         return response()->json(['message' => 'Daily basis retrieved successfully', 'data' => $dailyBasis], 200);
@@ -200,13 +207,20 @@ class DailyBasisController extends Controller
     public function update(Request $request, $id)
     {
         return DB::transaction(function () use ($request,$id) {
-            $company = Auth::user()->company;
-            $dailyBasis = $company->dailyBases()->findOrFail($id);
+
+            $dailyBasis = DailyBasis::findOrFail($id);
+
+            // Check if the clientPayment belongs to the logged-in user's company
+            $user = Auth::user();
+            if (!$user->company || $dailyBasis->company_id !== $user->company->id) {
+                return response()->json(['error' => 'Daily basis not found or unauthorized'], 404);
+            }
 
             $validatedData = $request->validate(DailyBasis::validationRules());
 
             $dailyBasis->update($validatedData);
 
+            $dailyBasis->dutyDates()->delete();
             // Assuming 'duty_dates' is an array of date data
             foreach ($request->duty_dates as $dutyDateData) {
                 $dailyBasis->dutyDates()->updateOrCreate([
@@ -214,6 +228,7 @@ class DailyBasisController extends Controller
                     "end_date" => $dutyDateData,
                 ]);
             }
+
 
             $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor']);
 
