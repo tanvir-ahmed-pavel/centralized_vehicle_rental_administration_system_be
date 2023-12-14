@@ -25,11 +25,11 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Create instances for other models
-        Client::factory(10)->create();
-        Vendor::factory(10)->create();
-        Driver::factory(10)->create();
-        Vehicle::factory(20)->create();
-        DailyBasis::factory(10)->create();
+        Client::factory(30)->create();
+        Vendor::factory(20)->create();
+        Driver::factory(20)->create();
+        Vehicle::factory(30)->create();
+        DailyBasis::factory(50)->create();
 //        ClientInvoice::factory(10)->create();
 //        ClientPayment::factory(20)->create();
     }

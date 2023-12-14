@@ -33,7 +33,26 @@ class DailyBasisController extends Controller
 
         // Fetch daily basis records based on the authenticated user's company and apply sorting
         $dailyBases = $company->dailyBases()
-            ->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor'])->withCount("clientInvoices")
+            ->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor'])
+            ->withCount("clientInvoices")
+            ->when($request->has('status'), function ($query) use ($request) {
+                // Filter by status if the 'status' parameter is present in the request
+                $statuses = explode(',', $request->status);
+                return $query->whereIn('status', $statuses);
+            })
+            ->when($request->has('client_id'), function ($query) use ($request) {
+                // Filter by client_id if the 'client_id' parameter is present in the request
+                $client_id = $request->client_id;
+
+                // Check if the provided client_id belongs to the company for ownership verification
+                $client = $query->first()->company->clients()->find($client_id);
+
+                if (!$client) {
+                    return response()->json(['error' => 'Client not found or unauthorized'], 404);
+                }
+
+                return $query->where('client_id', $client_id);
+            })
             ->orderBy($sortBy, $sortOrder)
             ->paginate($perPage, ['*'], 'page', $page);
 

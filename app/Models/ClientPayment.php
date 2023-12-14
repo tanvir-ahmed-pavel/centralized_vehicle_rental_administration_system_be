@@ -79,7 +79,7 @@ class ClientPayment extends Model
             return "DBIP-C-{$clientNameInitials}-{$currentYearLastTwoDigits}-{$invoiceIdPrefix}P{$paymentIdPrefix}";
         } elseif ($basisType === 'Monthly') {
             $currentMonth = date('m');
-            return "MBIP-C-{$clientNameInitials}-{$currentMonth}{$currentYearLastTwoDigits}-{$invoiceIdPrefix}P{$paymentIdPrefix}";
+            return "MBIP-C-{$clientNameInitials}-{$currentMonth}{$currentYearLastTwoDigits}-I{$invoiceIdPrefix}-{$paymentIdPrefix}";
         } else {
             // Handle other basis types if needed
             return '';

@@ -48,6 +48,26 @@ class ClientInvoiceController extends Controller
             $clientInvoices->where('daily_basis_id', $dailyBasisId);
         }
 
+        // Filter by status if the 'status' parameter is present in the request
+        if ($request->has('status')) {
+            $statuses = explode(',', $request->status);
+            $clientInvoices->whereIn('status', $statuses);
+        }
+
+        // Filter by client_id if the 'client_id' parameter is present in the request
+        if ($request->has('client_id')) {
+            $client_id = $request->client_id;
+
+            // Check if the provided client_id belongs to the company for ownership verification
+            $client = $company->clients()->find($client_id);
+
+            if (!$client) {
+                return response()->json(['error' => 'Client not found or unauthorized'], 404);
+            }
+
+            $clientInvoices->where('client_id', $client_id);
+        }
+
         $clientInvoices = $clientInvoices->paginate($perPage, ['*'], 'page', $page);
 
         // Map the data to the desired structure

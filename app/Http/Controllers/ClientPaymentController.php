@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Client;
 use App\Models\ClientInvoice;
 use App\Models\ClientPayment;
 use App\Models\DailyBasis;
@@ -31,8 +32,22 @@ class ClientPaymentController extends Controller
         $sortOrder = $request->has('sort_order') ? $request->sort_order : 'desc';
 
         // Fetch client payments based on the authenticated user's company and apply sorting
-        $clientPayments = $company->clientPayments()
+        $clientPayments = $company->clientInvoicePayments()
             ->with(['dailyBasis:id,client_id,vehicle_id,driver_id', 'clientInvoice:id,invoice_date,due_date,client_id,vehicle_id,driver_id'])
+            ->when($request->has('client_id'), function ($query) use ($request, $company) {
+                // Filter by client_id if the 'client_id' parameter is present in the request
+                $client_id = $request->client_id;
+
+
+                // Check if the provided client_id belongs to the company for ownership verification
+                $client = $company->clients()->find($client_id);
+
+                if (!$client) {
+                    return response()->json(['error' => 'Client not found or unauthorized'], 404);
+                }
+
+                return $query->where('client_id', $client_id);
+            })
             ->orderBy($sortBy, $sortOrder)
             ->paginate($perPage, ['*'], 'page', $page);
 
@@ -77,6 +92,44 @@ class ClientPaymentController extends Controller
                 'message' => 'Payments for the specified invoice retrieved successfully',
                 'data' => $payments,
             ], 200);
+    }
+
+
+    /**
+     * Get payments for a specific client invoice.
+     *
+     * @param  int  $invoiceId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getPaymentByClient(Request $request)
+    {
+
+        // Set default values for pagination if not provided in the request
+        $page = $request->has('page') ? $request->page : 1;
+        $perPage = $request->has('per_page') ? $request->per_page : 10;
+
+        // Set default values for sorting if not provided in the request
+        $sortBy = $request->has('sort_by') ? $request->sort_by : 'date';
+        $sortOrder = $request->has('sort_order') ? $request->sort_order : 'desc';
+
+        $client = Client::findOrFail($request->client_id);
+
+        // Check if the clientInvoice belongs to the logged-in user's company
+        $user = Auth::user();
+        if (!$user->company || $client->company_id !== $user->company->id) {
+            return response()->json(['error' => 'Client not found or unauthorized'], 404);
+        }
+
+        // Fetch payments under the specified invoice
+        $payments = $client->payments()
+            ->with(['clientInvoice:id,client_id,invoice_number'])
+            ->orderBy($sortBy, $sortOrder)
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        return response()->json([
+            'message' => 'Payments for the specified client retrieved successfully',
+            'data' => $payments,
+        ], 200);
     }
 
     /**

@@ -43,6 +43,7 @@ Route::middleware('auth:api')->group(function () {
 
     Route::resource('clientInvoicePayments', ClientPaymentController::class);
     Route::get('clientInvoicePayments/invoice/{id}', [ClientPaymentController::class, 'getPaymentByInvoice']);
+    Route::get('clientInvoicePayments/client/{client_id}', [ClientPaymentController::class, 'getPaymentByClient']);
 
     Route::name('resource.')->prefix('resource')->group(function() {
         Route::get("getDriverList", [ResourceController::class, "getDriverList"])->name("driverList");

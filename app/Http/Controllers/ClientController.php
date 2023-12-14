@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Http\Controllers\Controller;
+use App\Models\ClientInvoice;
 use App\Traits\DataMapping;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -89,8 +90,32 @@ class ClientController extends Controller
      */
     public function show($id)
     {
-        $client = Client::findOrFail($id);
-        return response()->json(['client' => $client]);
+        $company = Auth::user()->company;
+
+        // Check if the client belongs to the company
+        $client = $company->clients()->find($id);
+
+        if (!$client) {
+            // Client not found
+            return response()->json(['error' => 'Client not found or unauthorized'], 404);
+        }
+
+        // Sum all the invoice amounts for the client
+        $lifetimeBilled = $client->invoices()->sum('grand_total');
+
+        // Sum all the payments made by the client
+        $lifetimePaid = $client->payments()->sum('amount');
+
+        // Add the lifetime billed and lifetime paid to the client data
+        $client->lifetime_billed = $lifetimeBilled;
+        $client->lifetime_paid = $lifetimePaid;
+
+        $client->loadCount(["dailyBases", "invoices", "payments"]);
+
+        return response()->json([
+            'message' => 'Client retrieved successfully',
+            'data' => $client
+        ],200);
     }
 
 
