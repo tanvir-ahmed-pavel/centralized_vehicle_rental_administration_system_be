@@ -6,6 +6,7 @@ use App\Http\Controllers\ClientInvoiceController;
 use App\Http\Controllers\ClientPaymentController;
 use App\Http\Controllers\DailyBasisController;
 use App\Http\Controllers\DriverController;
+use App\Http\Controllers\FuelAdvancePaymentController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VendorController;
@@ -40,6 +41,9 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('dailyBasis', DailyBasisController::class);
 
     Route::apiResource('clientInvoices', ClientInvoiceController::class);
+
+    Route::resource('fuelAdvancePayments', FuelAdvancePaymentController::class);
+    Route::get('fuelAdvancePayments/daily-basis/{daily_basis_id}', [FuelAdvancePaymentController::class, "getFuelAdvancePaymentsByDailyBasis"]);
 
     Route::resource('clientInvoicePayments', ClientPaymentController::class);
     Route::get('clientInvoicePayments/invoice/{id}', [ClientPaymentController::class, 'getPaymentByInvoice']);

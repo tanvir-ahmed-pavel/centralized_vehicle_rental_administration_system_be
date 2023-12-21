@@ -146,4 +146,11 @@ class DailyBasis extends Model
         return $this->belongsTo(Vehicle::class);
     }
 
+    public function fuelAdvancePayments()
+    {
+        return $this->hasMany(FuelAdvancePayment::class);
+    }
+
+
+
 }

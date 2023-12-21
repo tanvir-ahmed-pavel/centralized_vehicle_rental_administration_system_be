@@ -11,22 +11,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('general_payments', function (Blueprint $table) {
+        Schema::create('fuel_advance_payments', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('company_id')->nullable();
             $table->unsignedBigInteger('daily_basis_id')->nullable();
             $table->unsignedBigInteger('monthly_contract_id')->nullable();
             $table->unsignedBigInteger('client_id')->nullable();
             $table->unsignedBigInteger('vendor_id')->nullable();
-            $table->unsignedBigInteger('client_id')->nullable();
+            $table->unsignedBigInteger('driver_id')->nullable();
+            $table->unsignedBigInteger('vehicle_id')->nullable();
             $table->unsignedBigInteger('chart_of_acc_id')->nullable();
-            $table->date('date');
+            $table->date('for_the_month_of')->nullable();
+            $table->date('posting_date');
             $table->decimal('amount', 10, 2);
             $table->enum('payment_method', ['Cash', 'Cheque', 'Bank Transfer', 'Mobile Banking (Bkash, Nadag, etc.)', 'Card']);
+            $table->enum('advance_from', ['Client', 'Vendor', 'Own'])->default("Own");
+            $table->enum('advance_to', ['Driver', 'Vendor'])->default("Driver");
             $table->string('payment_ref')->nullable();
             $table->string('payment_number')->nullable();
             $table->text('remarks')->nullable();
-            $table->boolean('is_active')->default(true);
             $table->timestamps();
             $table->softDeletes();
         });
@@ -37,6 +40,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('general_payments');
+        Schema::dropIfExists('fuel_advance_payments');
     }
 };

@@ -34,7 +34,7 @@ class DailyBasisController extends Controller
         // Fetch daily basis records based on the authenticated user's company and apply sorting
         $dailyBases = $company->dailyBases()
             ->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor'])
-            ->withCount("clientInvoices")
+            ->withCount("clientInvoices", "fuelAdvancePayments")
             ->when($request->has('status'), function ($query) use ($request) {
                 // Filter by status if the 'status' parameter is present in the request
                 $statuses = explode(',', $request->status);
@@ -92,6 +92,7 @@ class DailyBasisController extends Controller
                     ];
                 }),
                 'client_invoices_count' => $dailyBasis->client_invoices_count,
+                'fuel_advance_payments_count' => $dailyBasis->fuel_advance_payments_count,
                 'created_at' => $dailyBasis->created_at,
                 'status' => $dailyBasis->status,
             ];

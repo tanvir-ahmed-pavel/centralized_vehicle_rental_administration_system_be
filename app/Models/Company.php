@@ -116,4 +116,9 @@ class Company extends Model
     {
         return $this->hasMany(ClientPayment::class);
     }
+
+    public function fuelAdvancePayments()
+    {
+        return $this->hasMany(FuelAdvancePayment::class);
+    }
 }
