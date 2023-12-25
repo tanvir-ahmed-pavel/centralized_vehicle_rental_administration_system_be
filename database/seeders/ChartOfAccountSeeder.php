@@ -15,11 +15,11 @@ class ChartOfAccountSeeder extends Seeder
     {
         // Add your chart of accounts data
         // Parent groups
-        $assetGroup = ChartOfAccount::create(['code' => '1', 'name' => 'Assets', 'type' => 'Asset']);
-        $liabilityGroup = ChartOfAccount::create(['code' => '2', 'name' => 'Liabilities', 'type' => 'Liability']);
-        $equityGroup = ChartOfAccount::create(['code' => '3', 'name' => 'Equity', 'type' => 'Equity']);
-        $incomeGroup = ChartOfAccount::create(['code' => '4', 'name' => 'Income', 'type' => 'Income']);
-        $expenseGroup = ChartOfAccount::create(['code' => '5', 'name' => 'Expenses', 'type' => 'Expense']);
+        $assetGroup = ChartOfAccount::create(['code' => '1', 'name' => 'Assets', 'short_name' => 'Assets', 'type' => 'Asset']);
+        $liabilityGroup = ChartOfAccount::create(['code' => '2', 'name' => 'Liabilities', 'short_name' => 'Liabilities', 'type' => 'Liability']);
+        $equityGroup = ChartOfAccount::create(['code' => '3', 'name' => 'Equity', 'short_name' => 'Equity', 'type' => 'Equity']);
+        $incomeGroup = ChartOfAccount::create(['code' => '4', 'name' => 'Income', 'short_name' => 'Income', 'type' => 'Income']);
+        $expenseGroup = ChartOfAccount::create(['code' => '5', 'name' => 'Expenses', 'short_name' => 'Expenses', 'type' => 'Expense']);
 
         // Accounts under Assets
         ChartOfAccount::create(['code' => '1100', 'name' => 'Cash', 'short_name' => 'Cash', 'type' => 'Asset', 'parent_id' => $assetGroup->id]);

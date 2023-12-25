@@ -4,17 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Transaction extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'company_id',
         'chart_of_account_id',
         'client_payment_id',
+        'client_id',
         'driver_payment_id',
+        'driver_id',
         'vendor_payment_id',
+        'vendor_id',
         'fuel_advance_payment_id',
         'client_invoice_id',
         'driver_invoice_id',
@@ -31,10 +35,13 @@ class Transaction extends Model
     {
         return [
             'chart_of_account_id' => 'required|exists:chart_of_accounts,id',
-            'company_id' => 'nullable',
+            'company_id' => 'nullable|exists:companies,id',
             'client_payment_id' => 'nullable|exists:client_payments,id',
+            'client_id' => 'nullable|exists:clients,id',
             'driver_payment_id' => 'nullable|exists:driver_payments,id',
+            'driver_id' => 'nullable|exists:drivers,id',
             'vendor_payment_id' => 'nullable|exists:vendor_payments,id',
+            'vendor_id' => 'nullable|exists:vendors,id',
             'fuel_advance_payment_id' => 'nullable|exists:fuel_advance_payments,id',
             'client_invoice_id' => 'nullable|exists:client_invoices,id',
             'driver_invoice_id' => 'nullable|exists:driver_invoices,id',
@@ -96,5 +103,20 @@ class Transaction extends Model
     public function vendorInvoice()
     {
         return $this->belongsTo(VendorInvoice::class);
+    }
+
+    public function client()
+    {
+        return $this->belongsTo(Client::class);
+    }
+
+    public function driver()
+    {
+        return $this->belongsTo(Driver::class);
+    }
+
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
     }
 }

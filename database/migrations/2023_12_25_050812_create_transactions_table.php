@@ -16,8 +16,11 @@ return new class extends Migration
             $table->unsignedBigInteger('company_id')->nullable();
             $table->unsignedBigInteger('chart_of_account_id');
             $table->unsignedBigInteger('client_payment_id')->nullable();
+            $table->unsignedBigInteger('client_id')->nullable();
             $table->unsignedBigInteger('driver_payment_id')->nullable();
+            $table->unsignedBigInteger('driver_id')->nullable();
             $table->unsignedBigInteger('vendor_payment_id')->nullable();
+            $table->unsignedBigInteger('vendor_id')->nullable();
             $table->unsignedBigInteger('fuel_advance_payment_id')->nullable();
             $table->unsignedBigInteger('client_invoice_id')->nullable();
             $table->unsignedBigInteger('driver_invoice_id')->nullable();
@@ -28,6 +31,7 @@ return new class extends Migration
             $table->date('transaction_date');
             $table->string('description');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

@@ -153,6 +153,10 @@ class ClientInvoiceController extends Controller
             $clientInvoice->invoice_number = $clientInvoice->generateInvoiceNumber("Daily", $clientInvoice->client->name, $clientInvoice->id, $clientInvoice->daily_basis_id);
             $clientInvoice->save();
 
+//            Generate Chart of accounts transaction
+            $clientInvoice->generateTransactions();
+
+
             // Update client balance by increasing the grand_total amount of the invoice
             $client = $clientInvoice->client;
             $client->current_balance += $clientInvoice->grand_total;
@@ -162,6 +166,7 @@ class ClientInvoiceController extends Controller
             $dailyBasis = $clientInvoice->dailyBasis;
             $dailyBasis->status = "Invoice Created & Awaiting Payment";
             $dailyBasis->save();
+
 
             // Map the data to the desired structure
             $mappedData = [

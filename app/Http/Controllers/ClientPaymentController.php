@@ -185,6 +185,7 @@ class ClientPaymentController extends Controller
             $clientPayment->load(['clientInvoice:id,client_id,total_paid,grand_total', 'clientInvoice.client:id,name']);
             $clientPayment->payment_number = $clientPayment->generatePaymentNumber("Daily", $clientPayment->clientInvoice->client->name, $clientPayment->client_invoice_id, $clientPayment->id);
             $clientPayment->save();
+            $clientPayment->generateTransactions();
 
             return response()->json([
                 'message' => 'Client payment record created successfully',

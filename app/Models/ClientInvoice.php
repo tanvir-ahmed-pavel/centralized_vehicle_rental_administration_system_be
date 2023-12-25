@@ -5,22 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class ClientInvoice extends Model
 {
     use HasFactory, SoftDeletes;
-
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($clientInvoice) {
-            // Determine the chart_of_account_id based on conditions
-            $chartOfAccountId = ChartOfAccount::where('code', '1200')->value('id');
-            $clientInvoice->chart_of_account_id = $chartOfAccountId;
-        });
-    }
 
     /**
      * The attributes that are mass assignable.
@@ -88,6 +79,15 @@ class ClientInvoice extends Model
         ];
     }
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        // When a client invoice is deleted, also delete related transactions
+        static::deleting(function ($clientInvoice) {
+            $clientInvoice->transactions()->delete();
+        });
+    }
 
     /**
      * Generate invoice number based on the specified pattern.
@@ -117,6 +117,55 @@ class ClientInvoice extends Model
             // Handle other basis types if needed
             return '';
         }
+    }
+
+    public function generateTransactions()
+    {
+        $chartOfAccountReceivable = ChartOfAccount::where('code', '1200')->first(); // Assuming '1200' is the code for Accounts Receivable
+        $chartOfAccountSales = ChartOfAccount::where('code', '4100')->first(); // Assuming '4100' is the code for Sales
+
+        if (!$chartOfAccountReceivable || !$chartOfAccountSales) {
+            // Handle the case where one or both chart of accounts are not found
+
+            $missingAccounts = [];
+
+            if (!$chartOfAccountReceivable) {
+                $missingAccounts[] = 'Accounts Receivable';
+            }
+
+            if (!$chartOfAccountSales) {
+                $missingAccounts[] = 'Sales';
+            }
+
+            $errorMessage = "Chart of accounts not found for: " . implode(', ', $missingAccounts);
+
+            return response()->json(['error' => $errorMessage], 404);
+        }
+
+        $this->createTransaction($chartOfAccountReceivable, $this->grand_total, 'Debit', 'Client Invoice');
+        $this->createTransaction($chartOfAccountSales, $this->grand_total, 'Credit', 'Client Invoice');
+        return response()->json(['success' => 'Transactions created successfully'], 200);
+    }
+
+    private function createTransaction($chartOfAccount, $amount, $type, $description)
+    {
+        // Determine whether it's a debit or credit
+        $debitAmount = ($type === 'Debit') ? $amount : null;
+        $creditAmount = ($type === 'Credit') ? $amount : null;
+
+        $transaction = Transaction::create([
+            'company_id' => $this->company_id,
+            'client_id' => $this->client_id,
+            'chart_of_account_id' => $chartOfAccount->id,
+            'client_payment_id' => $this->id,
+            'user_id' => Auth::id(),
+            'debit' => $debitAmount,
+            'credit' => $creditAmount,
+            'transaction_date' => $this->created_at, // Or use a relevant date
+            'description' => $description." - ". $type ." (". $chartOfAccount->name.")." ,
+        ]);
+
+        return $transaction;
     }
 
     public function company()

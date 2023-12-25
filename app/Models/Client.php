@@ -106,4 +106,9 @@ class Client extends Model
     {
         return $this->hasMany(ClientPayment::class);
     }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
 }

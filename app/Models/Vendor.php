@@ -102,4 +102,9 @@ class Vendor extends Model
     {
         return $this->hasMany(DailyBasis::class);
     }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
 }
