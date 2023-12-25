@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('company_id')->nullable();
             $table->unsignedBigInteger('chart_of_account_id');
+            $table->unsignedBigInteger('daily_basis_id')->nullable();
+            $table->unsignedBigInteger('monthly_contract_id')->nullable();
             $table->unsignedBigInteger('client_payment_id')->nullable();
             $table->unsignedBigInteger('client_id')->nullable();
             $table->unsignedBigInteger('driver_payment_id')->nullable();

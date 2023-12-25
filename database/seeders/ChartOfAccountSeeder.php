@@ -33,7 +33,8 @@ class ChartOfAccountSeeder extends Seeder
 
         // Accounts under Liabilities
         ChartOfAccount::create(['code' => '2100', 'name' => 'Accounts Payable', 'short_name' => 'AP', 'type' => 'Liability', 'parent_id' => $liabilityGroup->id]);
-        ChartOfAccount::create(['code' => '2200', 'name' => 'Loans Payable', 'short_name' => 'Loans', 'type' => 'Liability', 'parent_id' => $liabilityGroup->id]);
+        ChartOfAccount::create(['code' => '2200', 'name' => 'Client Advance', 'short_name' => 'Client Advance', 'type' => 'Liability', 'parent_id' => $liabilityGroup->id]);
+        ChartOfAccount::create(['code' => '2300', 'name' => 'Loans Payable', 'short_name' => 'Loans', 'type' => 'Liability', 'parent_id' => $liabilityGroup->id]);
 
         // Accounts under Equity
         ChartOfAccount::create(['code' => '3100', 'name' => "Owner's Equity", 'short_name' => "Owner's Equity", 'type' => 'Equity', 'parent_id' => $equityGroup->id]);
@@ -48,7 +49,7 @@ class ChartOfAccountSeeder extends Seeder
         ChartOfAccount::create(['code' => '5100', 'name' => 'Rent', 'short_name' => 'Rent', 'type' => 'Expense', 'parent_id' => $expenseGroup->id]);
         ChartOfAccount::create(['code' => '5200', 'name' => 'Utilities', 'short_name' => 'Utilities', 'type' => 'Expense', 'parent_id' => $expenseGroup->id]);
         ChartOfAccount::create(['code' => '5300', 'name' => 'Salaries', 'short_name' => 'Salaries', 'type' => 'Expense', 'parent_id' => $expenseGroup->id]);
-        ChartOfAccount::create(['code' => '5400', 'name' => 'Fuel Cost', 'short_name' => 'Fuel Cost', 'type' => 'Expense', 'parent_id' => $expenseGroup->id]);
+        ChartOfAccount::create(['code' => '5400', 'name' => 'Fuel Expense', 'short_name' => 'Fuel Expense', 'type' => 'Expense', 'parent_id' => $expenseGroup->id]);
         ChartOfAccount::create(['code' => '5500', 'name' => 'Driver Payments', 'short_name' => 'Driver Payments', 'type' => 'Expense', 'parent_id' => $expenseGroup->id]);
         ChartOfAccount::create(['code' => '5600', 'name' => 'Vendor Payments', 'short_name' => 'Vendor Payments', 'type' => 'Expense', 'parent_id' => $expenseGroup->id]);
     }

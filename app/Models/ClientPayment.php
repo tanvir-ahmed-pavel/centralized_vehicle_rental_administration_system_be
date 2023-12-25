@@ -79,6 +79,8 @@ class ClientPayment extends Model
 
         $transaction = Transaction::create([
             'company_id' => $this->company_id,
+            'daily_basis_id' => $this->daily_basis_id,
+            'monthly_contract_id' => $this->monthly_contract_id,
             'client_id' => $this->client_id,
             'chart_of_account_id' => $chartOfAccount->id,
             'client_payment_id' => $this->id,

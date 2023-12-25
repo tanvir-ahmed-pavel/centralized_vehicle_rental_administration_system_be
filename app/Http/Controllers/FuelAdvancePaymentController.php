@@ -148,6 +148,14 @@ class FuelAdvancePaymentController extends Controller
 
             $fuelAdvancePayment->payment_number = $fuelAdvancePayment->generatePaymentNumber("Daily", $fuelAdvancePayment->id, $fuelAdvancePayment->payment_type, $fuelAdvancePayment->payment_from);
             $fuelAdvancePayment->save();
+            $fuelAdvancePayment->generateTransactions();
+
+            // Update client balance
+            if ($validatedData["payment_from"] == "Client"){
+                $client = $fuelAdvancePayment->client;
+                $client->current_balance -= $fuelAdvancePayment->amount;
+                $client->save();
+            }
 
             $fuelAdvancePayments = $dailyBasis->fuelAdvancePayments()->get();
             $fuelAdvanceTotal = $fuelAdvancePayments->sum('amount');
@@ -252,6 +260,16 @@ class FuelAdvancePaymentController extends Controller
             if ($fuelAdvancePayment->dailyBasis->clientInvoices()->exists()) {
                 return response()->json(['error' => 'Cannot delete fuel advance payment, it has associated invoices'], 422);
             }
+
+            // Update client balance
+            if ($fuelAdvancePayment->payment_from == "Client"){
+                if ($fuelAdvancePayment->client->exists()){
+                    $client = $fuelAdvancePayment->client;
+                    $client->current_balance += $fuelAdvancePayment->amount;
+                    $client->save();
+                }
+            }
+
 
             $fuelAdvancePayment->delete();
 

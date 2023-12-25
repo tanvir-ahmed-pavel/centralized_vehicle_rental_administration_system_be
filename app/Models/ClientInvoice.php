@@ -142,8 +142,8 @@ class ClientInvoice extends Model
             return response()->json(['error' => $errorMessage], 404);
         }
 
-        $this->createTransaction($chartOfAccountReceivable, $this->grand_total, 'Debit', 'Client Invoice');
-        $this->createTransaction($chartOfAccountSales, $this->grand_total, 'Credit', 'Client Invoice');
+        $this->createTransaction($chartOfAccountReceivable, ($this->grand_total - $this->advance_amount), 'Debit', 'Client Invoice');
+        $this->createTransaction($chartOfAccountSales, ($this->grand_total - $this->advance_amount), 'Credit', 'Client Invoice');
         return response()->json(['success' => 'Transactions created successfully'], 200);
     }
 
@@ -155,9 +155,11 @@ class ClientInvoice extends Model
 
         $transaction = Transaction::create([
             'company_id' => $this->company_id,
+            'daily_basis_id' => $this->daily_basis_id,
+            'monthly_contract_id' => $this->monthly_contract_id,
             'client_id' => $this->client_id,
             'chart_of_account_id' => $chartOfAccount->id,
-            'client_payment_id' => $this->id,
+            'client_invoice_id' => $this->id,
             'user_id' => Auth::id(),
             'debit' => $debitAmount,
             'credit' => $creditAmount,

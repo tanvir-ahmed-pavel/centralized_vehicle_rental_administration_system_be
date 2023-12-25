@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class FuelAdvancePayment extends Model
@@ -17,31 +18,97 @@ class FuelAdvancePayment extends Model
     protected static function boot()
     {
         parent::boot();
-        static::creating(function ($fuelAdvancePayment) {
-            // Determine the chart_of_account_id based on conditions
-            $chartOfAccountId = null;
 
-            // Example: Assign account based on payment method
-            switch ($fuelAdvancePayment->payment_method) {
-                case 'Cash':
-                    $chartOfAccountId = ChartOfAccount::where('code', '1100')->value('id');
-                    break;
-                case 'Bank Transfer':
-                    $chartOfAccountId = ChartOfAccount::where('code', '1110')->value('id');
-                    break;
-                case 'Cheque':
-                    $chartOfAccountId = ChartOfAccount::where('code', '1111')->value('id');
-                    break;
-                case 'Mobile Banking (Bkash, Nagad, etc.)':
-                    $chartOfAccountId = ChartOfAccount::where('code', '1112')->value('id');
-                    break;
-                case 'Card':
-                    $chartOfAccountId = ChartOfAccount::where('code', '1113')->value('id');
-                    break;
-
-            }
-            $fuelAdvancePayment->chart_of_account_id = $chartOfAccountId;
+        static::deleting(function ($fuelAdvancePayment) {
+            $fuelAdvancePayment->transactions()->delete();
         });
+    }
+
+    public function generateTransactions()
+    {
+        $assetAccount = null;
+
+        // Example: Assign account based on payment method
+        switch ($this->payment_method) {
+            case 'Cash':
+                $assetAccount = ChartOfAccount::where('code', '1100')->first();
+                break;
+            case 'Bank Transfer':
+                $assetAccount = ChartOfAccount::where('code', '1110')->first();
+                break;
+            case 'Cheque':
+                $assetAccount = ChartOfAccount::where('code', '1111')->first();
+                break;
+            case 'Mobile Banking (Bkash, Nagad, etc.)':
+                $assetAccount = ChartOfAccount::where('code', '1112')->first();
+                break;
+            case 'Card':
+                $assetAccount = ChartOfAccount::where('code', '1113')->first();
+                break;
+        }
+
+        $chartOfAccountReceivable = ChartOfAccount::where('code', '1200')->first(); // Assuming '1200' is the code for Accounts Receivable
+
+        $chartOfAccountFuelExpense = ChartOfAccount::where('name', 'Fuel Expense')->first();
+        $chartOfAccountClientAdvance = ChartOfAccount::where('name', 'Fuel Expense')->first();
+
+        if (!$assetAccount || !$chartOfAccountReceivable || !$chartOfAccountFuelExpense || !$chartOfAccountClientAdvance) {
+            // Handle the case where one or both chart of accounts are not found
+            $missingAccounts = [];
+
+            if (!$assetAccount) {
+                $missingAccounts[] = $this->payment_method;
+            }
+
+            if (!$chartOfAccountReceivable) {
+                $missingAccounts[] = 'Accounts Receivable';
+            }
+
+            $errorMessage = "Chart of accounts not found for: " . implode(', ', $missingAccounts);
+
+            return response()->json(['error' => $errorMessage], 404);
+        }
+
+        if($this->payment_type == "Fuel Payment"){
+            if($this->payment_from == "Self"){
+                $this->createTransaction($assetAccount, $this->amount, 'Credit', "Fuel Payment");
+                $this->createTransaction($chartOfAccountFuelExpense, $this->amount, 'Debit', "Fuel Payment");
+            } elseif ($this->payment_from == "Client"){
+                $this->createTransaction($assetAccount, $this->amount, 'Debit', "Client Advance Payment");
+                $this->createTransaction($chartOfAccountClientAdvance, $this->amount, 'Credit', "Client Advance Payment");
+
+                $this->createTransaction($assetAccount, $this->amount, 'Credit', "Fuel Payment");
+                $this->createTransaction($chartOfAccountFuelExpense, $this->amount, 'Debit', "Fuel Payment");
+            }
+        } elseif ($this->payment_type == "Advance Payment"){
+            $this->createTransaction($assetAccount, $this->amount, 'Debit', "Client Advance Payment");
+            $this->createTransaction($chartOfAccountClientAdvance, $this->amount, 'Credit', "Client Advance Payment");
+        }
+        return response()->json(['success' => 'Transactions created successfully'], 200);
+    }
+
+
+    private function createTransaction($chartOfAccount, $amount, $type, $description)
+    {
+        // Determine whether it's a debit or credit
+        $debitAmount = ($type === 'Debit') ? $amount : null;
+        $creditAmount = ($type === 'Credit') ? $amount : null;
+
+        $transaction = Transaction::create([
+            'company_id' => $this->company_id,
+            'daily_basis_id' => $this->daily_basis_id,
+            'monthly_contract_id' => $this->monthly_contract_id,
+            'client_id' => $this->client_id,
+            'chart_of_account_id' => $chartOfAccount->id,
+            'fuel_advance_payment_id' => $this->id,
+            'user_id' => Auth::id(),
+            'debit' => $debitAmount,
+            'credit' => $creditAmount,
+            'transaction_date' => $this->created_at, // Or use a relevant date
+            'description' => $description." - ". $type ." (". $chartOfAccount->name.")." ,
+        ]);
+
+        return $transaction;
     }
 
     /**

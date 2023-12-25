@@ -12,6 +12,8 @@ class Transaction extends Model
 
     protected $fillable = [
         'company_id',
+        'monthly_contract_id',
+        'daily_basis_id',
         'chart_of_account_id',
         'client_payment_id',
         'client_id',
@@ -36,6 +38,8 @@ class Transaction extends Model
         return [
             'chart_of_account_id' => 'required|exists:chart_of_accounts,id',
             'company_id' => 'nullable|exists:companies,id',
+            'monthly_contract_id' => 'nullable|exists:monthly_contracts,id',
+            'daily_basis_id' => 'nullable|exists:daily_bases,id',
             'client_payment_id' => 'nullable|exists:client_payments,id',
             'client_id' => 'nullable|exists:clients,id',
             'driver_payment_id' => 'nullable|exists:driver_payments,id',

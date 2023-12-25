@@ -105,6 +105,8 @@ class ClientController extends Controller
 
         // Sum all the payments made by the client
         $lifetimePaid = $client->payments()->sum('amount');
+        $lifetimePaid += $client->fuelAdvancePayments()->sum('amount');
+
 
         // Add the lifetime billed and lifetime paid to the client data
         $client->lifetime_billed = $lifetimeBilled;
