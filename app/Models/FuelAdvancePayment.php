@@ -12,6 +12,39 @@ class FuelAdvancePayment extends Model
     use HasFactory, SoftDeletes;
 
     /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($fuelAdvancePayment) {
+            // Determine the chart_of_account_id based on conditions
+            $chartOfAccountId = null;
+
+            // Example: Assign account based on payment method
+            switch ($fuelAdvancePayment->payment_method) {
+                case 'Cash':
+                    $chartOfAccountId = ChartOfAccount::where('code', '1100')->value('id');
+                    break;
+                case 'Bank Transfer':
+                    $chartOfAccountId = ChartOfAccount::where('code', '1110')->value('id');
+                    break;
+                case 'Cheque':
+                    $chartOfAccountId = ChartOfAccount::where('code', '1111')->value('id');
+                    break;
+                case 'Mobile Banking (Bkash, Nagad, etc.)':
+                    $chartOfAccountId = ChartOfAccount::where('code', '1112')->value('id');
+                    break;
+                case 'Card':
+                    $chartOfAccountId = ChartOfAccount::where('code', '1113')->value('id');
+                    break;
+
+            }
+            $fuelAdvancePayment->chart_of_account_id = $chartOfAccountId;
+        });
+    }
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array
@@ -24,13 +57,13 @@ class FuelAdvancePayment extends Model
         'vendor_id',
         'driver_id',
         'vehicle_id',
-        'chart_of_acc_id',
         'for_the_month_of',
         'posting_date',
         'amount',
         'payment_method',
-        'advance_from',
-        'advance_to',
+        'payment_from',
+        'payment_type',
+        'payment_to',
         'payment_ref',
         'payment_number',
         'remarks',
@@ -51,13 +84,13 @@ class FuelAdvancePayment extends Model
             'vendor_id' => 'nullable|exists:vendors,id',
             'driver_id' => 'nullable|exists:drivers,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
-            'chart_of_acc_id' => 'nullable|exists:chart_of_accounts,id',
             'for_the_month_of' => 'nullable|date',
             'posting_date' => 'required|date',
             'amount' => 'required|numeric',
-            'payment_method' => ['required', Rule::in(['Cash', 'Cheque', 'Bank Transfer', 'Mobile Banking (Bkash, Nadag, etc.)', "Card"])],
-            'advance_from' => 'required|in:Client,Vendor,Own',
-            'advance_to' => 'required|in:Driver,Vendor',
+            'payment_method' => ['required', Rule::in(['Cash', 'Cheque', 'Bank Transfer', 'Mobile Banking (Bkash, Nagad, etc.)', "Card"])],
+            'payment_from' => ['required', Rule::in(['Client', 'Vendor', 'Self'])],
+            'payment_type' => ['required', Rule::in(['Fuel Payment', 'Advance Payment'])],
+            'payment_to' => ['nullable', Rule::in(['Driver', 'Vendor'])],
             'payment_ref' => 'nullable|string',
             'payment_number' => 'nullable|string',
             'remarks' => 'nullable|string',
@@ -73,19 +106,32 @@ class FuelAdvancePayment extends Model
      * @param int $paymentId
      * @return string
      */
-    public static function generatePaymentNumber($basisType, $paymentId)
+    public static function generatePaymentNumber($basisType, $paymentId, $paymentType, $paymentFrom)
     {
 
         $paymentIdPrefix = str_pad($paymentId, 3, '0', STR_PAD_LEFT);
 
         $currentYearLastTwoDigits = date('y');
         $currentMonth = date('m');
+        $paymentTypePrefix = $paymentType=="Fuel Payment"?"FP":"AP";
+         function paymentFromPrefix ($paymentFrom){
+            if($paymentFrom=="Client"){
+                return "C";
+            } elseif($paymentFrom=="Vendor"){
+                return "V";
+            }else{
+                return "";
+            }
+        };
+
+        $paymentFromPrefix = paymentFromPrefix($paymentFrom);
+
 
         if ($basisType === 'Daily') {
-            return "DBFP-{$currentMonth}{$currentYearLastTwoDigits}-P{$paymentIdPrefix}";
+            return "DB-{$paymentFromPrefix}{$paymentTypePrefix}-{$currentMonth}{$currentYearLastTwoDigits}-P{$paymentIdPrefix}";
         } elseif ($basisType === 'Monthly') {
 
-            return "MBFP-{$currentMonth}{$currentYearLastTwoDigits}-P{$paymentIdPrefix}";
+            return "MB-{$paymentFromPrefix}{$paymentTypePrefix}-{$currentMonth}{$currentYearLastTwoDigits}-P{$paymentIdPrefix}";
         } else {
             // Handle other basis types if needed
             return '';
@@ -132,5 +178,10 @@ class FuelAdvancePayment extends Model
     public function chartOfAccount()
     {
         return $this->belongsTo(ChartOfAccount::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
     }
 }

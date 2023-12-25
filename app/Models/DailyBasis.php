@@ -95,6 +95,21 @@ class DailyBasis extends Model
 //        });
     }
 
+    public static function generateDailyBasisNumber( $clientName, $bookingId)
+    {
+        $clientNameInitials = implode('', array_map(function ($word) {
+            return strtoupper(substr($word, 0, 1));
+        }, explode(' ', $clientName)));
+
+        $bookingIdPrefix = str_pad($bookingId, 3, '0', STR_PAD_LEFT);
+
+        $currentYearLastTwoDigits = date('y');
+        $currentMonth = date('m');
+
+        return "DB-{$clientNameInitials}-{$currentMonth}{$currentYearLastTwoDigits}-{$bookingIdPrefix}";
+
+    }
+
     public function dutyDates()
     {
         return $this->hasMany(DutyDate::class);

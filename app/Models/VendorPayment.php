@@ -34,4 +34,14 @@ class VendorPayment extends Model
 //            'price' => 'required|numeric|min:0',
         ]);
     }
+
+    public function chartOfAccount()
+    {
+        return $this->belongsTo(ChartOfAccount::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
 }

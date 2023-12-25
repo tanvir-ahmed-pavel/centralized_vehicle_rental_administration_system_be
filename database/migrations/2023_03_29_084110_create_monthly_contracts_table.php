@@ -20,6 +20,7 @@ return new class extends Migration
             $table->unsignedBigInteger('client_id')->nullable();
             $table->unsignedBigInteger('status_id')->nullable();
 
+            $table->string('monthly_contract_number')->nullable();
             $table->enum('fuel_type', array('Octane', 'Diesel', 'Petrol', 'LPG', 'CNG'));
             $table->double('per_km_rate',11,2)->nullable();
             $table->double('body_rent_per_month',11,2)->nullable();

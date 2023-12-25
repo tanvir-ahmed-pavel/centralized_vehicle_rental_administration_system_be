@@ -60,6 +60,7 @@ class DailyBasisController extends Controller
         $mappedData = $dailyBases->map(function ($dailyBasis) {
             return [
                 'id' => $dailyBasis->id,
+                'daily_basis_number' => $dailyBasis->daily_basis_number,
                 'client_id' => $dailyBasis->client_id,
                 'client' => [
                     'id' => $dailyBasis->client->id,
@@ -131,6 +132,8 @@ class DailyBasisController extends Controller
 
             // Create the daily basis record
             $dailyBasis = $company->dailyBases()->create($validatedData);
+            $dailyBasis->daily_basis_number = $dailyBasis->generateDailyBasisNumber($dailyBasis->client->name, $dailyBasis->id);
+            $dailyBasis->save();
 
 
             // Create duty date records if provided in the request
@@ -149,6 +152,7 @@ class DailyBasisController extends Controller
 
             $mappedData = [
                 'id' => $dailyBasis->id,
+                'daily_basis_number' => $dailyBasis->daily_basis_number,
                 'client_id' => $dailyBasis->client_id,
                 'client' => [
                     'id' => $dailyBasis->client->id,
@@ -211,7 +215,7 @@ class DailyBasisController extends Controller
             'vehicle:id,name,model_year as model,reg_no as reg',
             'driver:id,name,mobile_no as mobile', 'dutyDates',
             'vendor:id,name'])
-            ->loadCount("clientInvoices");
+            ->loadCount("clientInvoices", "fuelAdvancePayments");
 //        $dailyBasis = $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor'])
 
         return response()->json(['message' => 'Daily basis retrieved successfully', 'data' => $dailyBasis], 200);
@@ -254,6 +258,7 @@ class DailyBasisController extends Controller
 
             $mappedData = [
                 'id' => $dailyBasis->id,
+                'daily_basis_number' => $dailyBasis->daily_basis_number,
                 'client_id' => $dailyBasis->client_id,
                 'client' => [
                     'id' => $dailyBasis->client->id,
@@ -305,7 +310,7 @@ class DailyBasisController extends Controller
             $dailyBasis = DailyBasis::findOrFail($id);
 
             // Check if there are any associated invoices
-            if ($dailyBasis->clientInvoices()->exists()) {
+            if ($dailyBasis->clientInvoices()->exists() || $dailyBasis->fuelAdvancePayments()->exists()) {
                 return response()->json(['error' => 'Daily basis record cannot be deleted as it has associated invoices'], 422);
             }
 

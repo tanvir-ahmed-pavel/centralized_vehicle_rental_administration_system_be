@@ -8,4 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class GeneralPayment extends Model
 {
     use HasFactory;
+
+    public function chartOfAccount()
+    {
+        return $this->belongsTo(ChartOfAccount::class);
+    }
 }

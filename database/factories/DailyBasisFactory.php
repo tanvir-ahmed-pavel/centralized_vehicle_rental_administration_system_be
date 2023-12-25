@@ -64,6 +64,9 @@ class DailyBasisFactory extends Factory
         return $this->afterCreating(function (DailyBasis $dailyBasis) {
             // Create duty dates associated with the DailyBasis
             $dutyDates = DutyDate::factory(mt_rand(1, 10))->create(['daily_basis_id' => $dailyBasis->id]);
+            $dailyBasis->load('client');
+            $dailyBasis->daily_basis_number = $dailyBasis->generateDailyBasisNumber($dailyBasis->client->name, $dailyBasis->id);
+            $dailyBasis->save();
 
             // Associate the duty dates with the DailyBasis
             $dailyBasis->dutyDates()->saveMany($dutyDates);

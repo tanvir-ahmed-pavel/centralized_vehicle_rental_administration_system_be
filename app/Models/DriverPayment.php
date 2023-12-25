@@ -43,4 +43,14 @@ class DriverPayment extends Model
 //            $invoice->payments()->delete();
 //        });
     }
+
+    public function chartOfAccount()
+    {
+        return $this->belongsTo(ChartOfAccount::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
 }

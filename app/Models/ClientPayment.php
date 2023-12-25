@@ -11,6 +11,39 @@ class ClientPayment extends Model
     use HasFactory, SoftDeletes;
 
     /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($clientPayment) {
+            // Determine the chart_of_account_id based on conditions
+            $chartOfAccountId = null;
+
+            // Example: Assign account based on payment method
+            switch ($clientPayment->payment_method) {
+                case 'Cash':
+                    $chartOfAccountId = ChartOfAccount::where('code', '1100')->value('id');
+                    break;
+                case 'Bank Transfer':
+                    $chartOfAccountId = ChartOfAccount::where('code', '1110')->value('id');
+                    break;
+                case 'Cheque':
+                    $chartOfAccountId = ChartOfAccount::where('code', '1111')->value('id');
+                    break;
+                case 'Mobile Banking (Bkash, Nagad, etc.)':
+                    $chartOfAccountId = ChartOfAccount::where('code', '1112')->value('id');
+                    break;
+                case 'Card':
+                    $chartOfAccountId = ChartOfAccount::where('code', '1113')->value('id');
+                    break;
+
+            }
+            $clientPayment->chart_of_account_id = $chartOfAccountId;
+        });
+    }
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array
@@ -21,7 +54,6 @@ class ClientPayment extends Model
         'monthly_contract_id',
         'client_id',
         'client_invoice_id',
-        'chart_of_acc_id',
         'date',
         'amount',
         'payment_method',
@@ -44,10 +76,9 @@ class ClientPayment extends Model
             'monthly_contract_id' => 'nullable|exists:monthly_contracts,id',
             'client_id' => 'nullable|exists:clients,id',
             'client_invoice_id' => 'nullable|exists:client_invoices,id',
-            'chart_of_acc_id' => 'nullable|exists:chart_of_accounts,id',
             'date' => 'required|date',
             'amount' => 'required|numeric',
-            'payment_method' => 'required|in:Cash,Cheque,Bank Transfer,Mobile Banking (Bkash, Nadag, etc.),Card',
+            'payment_method' => 'required|in:Cash,Cheque,Bank Transfer,Mobile Banking (Bkash, Nagad, etc.),Card',
             'payment_ref' => 'nullable|string',
             'payment_number' => 'nullable|string',
             'remarks' => 'nullable|string',
@@ -111,5 +142,10 @@ class ClientPayment extends Model
     public function chartOfAccount()
     {
         return $this->belongsTo(ChartOfAccount::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
     }
 }

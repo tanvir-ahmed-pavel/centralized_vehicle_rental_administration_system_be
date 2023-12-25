@@ -79,4 +79,9 @@ class VendorInvoice extends Model
     {
         return $this->hasMany(VendorPayment::class);
     }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
 }

@@ -21,6 +21,7 @@ return new class extends Migration
 
             $table->enum('status', array('Booking Created', 'On Duty', 'On Hold', 'To Make Invoice', "Invoice Created & Awaiting Payment", "Partially Paid", "Payment Overdue", "Paid & Closed"))->default("Booking Created");
 
+            $table->string('daily_basis_number')->nullable();
             $table->string('fuel_type')->nullable();
             $table->double('per_km_rate',11,2)->default(0);
             $table->double('body_rent_per_day',11,2)->default(0);

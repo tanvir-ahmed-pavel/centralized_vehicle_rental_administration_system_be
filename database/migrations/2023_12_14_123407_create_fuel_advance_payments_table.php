@@ -20,13 +20,13 @@ return new class extends Migration
             $table->unsignedBigInteger('vendor_id')->nullable();
             $table->unsignedBigInteger('driver_id')->nullable();
             $table->unsignedBigInteger('vehicle_id')->nullable();
-            $table->unsignedBigInteger('chart_of_acc_id')->nullable();
             $table->date('for_the_month_of')->nullable();
             $table->date('posting_date');
             $table->decimal('amount', 10, 2);
-            $table->enum('payment_method', ['Cash', 'Cheque', 'Bank Transfer', 'Mobile Banking (Bkash, Nadag, etc.)', 'Card']);
-            $table->enum('advance_from', ['Client', 'Vendor', 'Own'])->default("Own");
-            $table->enum('advance_to', ['Driver', 'Vendor'])->default("Driver");
+            $table->enum('payment_method', ['Cash', 'Cheque', 'Bank Transfer', 'Mobile Banking (Bkash, Nagad, etc.)', 'Card']);
+            $table->enum('payment_from', ['Client', 'Vendor', 'Self'])->default("Self");
+            $table->enum('payment_type', ["Fuel Payment", "Advance Payment"])->default("Fuel Payment");
+            $table->enum('payment_to', ['Driver', 'Vendor'])->default("Driver");
             $table->string('payment_ref')->nullable();
             $table->string('payment_number')->nullable();
             $table->text('remarks')->nullable();

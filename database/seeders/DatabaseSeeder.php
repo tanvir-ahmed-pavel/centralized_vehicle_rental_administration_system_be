@@ -30,7 +30,9 @@ class DatabaseSeeder extends Seeder
         Driver::factory(20)->create();
         Vehicle::factory(30)->create();
         DailyBasis::factory(50)->create();
-//        ClientInvoice::factory(10)->create();
-//        ClientPayment::factory(20)->create();
+
+        $this->call([
+            ChartOfAccountSeeder::class,
+        ]);
     }
 }

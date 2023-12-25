@@ -33,7 +33,7 @@ class ClientPaymentController extends Controller
 
         // Fetch client payments based on the authenticated user's company and apply sorting
         $clientPayments = $company->clientInvoicePayments()
-            ->with(['dailyBasis:id,client_id,vehicle_id,driver_id', 'clientInvoice:id,invoice_date,due_date,client_id,vehicle_id,driver_id'])
+            ->with(['dailyBasis:id,client_id,vehicle_id,driver_id', 'clientInvoice:id,invoice_date,due_date,client_id,vehicle_id,driver_id', 'chartOfAccount:id,short_name,name'])
             ->when($request->has('client_id'), function ($query) use ($request, $company) {
                 // Filter by client_id if the 'client_id' parameter is present in the request
                 $client_id = $request->client_id;
@@ -84,7 +84,7 @@ class ClientPaymentController extends Controller
 
             // Fetch payments under the specified invoice
             $payments = $clientInvoice->payments()
-                ->with(['clientInvoice:id,client_id', 'clientInvoice.client:id,name'])
+                ->with(['clientInvoice:id,client_id', 'clientInvoice.client:id,name', 'chartOfAccount:id,short_name,name'])
                 ->orderBy($sortBy, $sortOrder)
                 ->paginate($perPage, ['*'], 'page', $page);
 
@@ -122,7 +122,7 @@ class ClientPaymentController extends Controller
 
         // Fetch payments under the specified invoice
         $payments = $client->payments()
-            ->with(['clientInvoice:id,client_id,invoice_number'])
+            ->with(['clientInvoice:id,client_id,invoice_number', 'chartOfAccount:id,short_name,name'])
             ->orderBy($sortBy, $sortOrder)
             ->paginate($perPage, ['*'], 'page', $page);
 

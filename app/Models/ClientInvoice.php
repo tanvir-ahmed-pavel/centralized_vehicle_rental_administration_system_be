@@ -12,6 +12,16 @@ class ClientInvoice extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($clientInvoice) {
+            // Determine the chart_of_account_id based on conditions
+            $chartOfAccountId = ChartOfAccount::where('code', '1200')->value('id');
+            $clientInvoice->chart_of_account_id = $chartOfAccountId;
+        });
+    }
+
     /**
      * The attributes that are mass assignable.
      *
@@ -78,14 +88,6 @@ class ClientInvoice extends Model
         ];
     }
 
-//    Events for cascading on delete
-    protected static function boot() {
-        parent::boot();
-
-//        static::deleted(function ($invoice) {
-//            $invoice->payments()->delete();
-//        });
-    }
 
     /**
      * Generate invoice number based on the specified pattern.
@@ -156,5 +158,9 @@ class ClientInvoice extends Model
         return $this->hasMany(ClientPayment::class);
     }
 
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
 
 }

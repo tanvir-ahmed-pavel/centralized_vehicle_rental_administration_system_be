@@ -43,4 +43,9 @@ class DriverInvoice extends Model
 //            $invoice->payments()->delete();
 //        });
     }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
 }
