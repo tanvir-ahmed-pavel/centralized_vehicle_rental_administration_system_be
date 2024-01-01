@@ -33,8 +33,10 @@ class DailyBasisController extends Controller
 
         // Fetch daily basis records based on the authenticated user's company and apply sorting
         $dailyBases = $company->dailyBases()
-            ->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor'])
-            ->withCount("clientInvoices", "fuelAdvancePayments")
+            ->with(['client', 'vehicle', 'driver', 'dutyDates' => function ($query) {
+                $query->orderBy('start_date', 'asc');
+            }, 'vendor'])
+            ->withCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments")
             ->when($request->has('status'), function ($query) use ($request) {
                 // Filter by status if the 'status' parameter is present in the request
                 $statuses = explode(',', $request->status);
@@ -75,7 +77,7 @@ class DailyBasisController extends Controller
                 'vehicle' => [
                     'id' => $dailyBasis->vehicle->id,
                     'name' => $dailyBasis->vehicle->name,
-                    'model' => $dailyBasis->vehicle->model,
+                    'model_year' => $dailyBasis->vehicle->model_year,
                     'reg' => $dailyBasis->vehicle->reg_no,
                 ],
                 'driver_id' => $dailyBasis->driver_id,
@@ -93,6 +95,8 @@ class DailyBasisController extends Controller
                     ];
                 }),
                 'client_invoices_count' => $dailyBasis->client_invoices_count,
+                'driver_invoices_count' => $dailyBasis->driver_invoices_count,
+                'vendor_invoices_count' => $dailyBasis->vendor_invoices_count,
                 'fuel_advance_payments_count' => $dailyBasis->fuel_advance_payments_count,
                 'created_at' => $dailyBasis->created_at,
                 'status' => $dailyBasis->status,
@@ -146,9 +150,10 @@ class DailyBasisController extends Controller
                     ]);
                 }
             }
-            $invoice_count = $dailyBasis->clientInvoices()->count();
 
-            $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor']);
+            $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates' => function ($query) {
+                $query->orderBy('start_date', 'asc');
+            }, 'vendor'])->withCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments");
 
             $mappedData = [
                 'id' => $dailyBasis->id,
@@ -167,7 +172,7 @@ class DailyBasisController extends Controller
                 'vehicle' => [
                     'id' => $dailyBasis->vehicle->id,
                     'name' => $dailyBasis->vehicle->name,
-                    'model' => $dailyBasis->vehicle->model,
+                    'model_year' => $dailyBasis->vehicle->model_year,
                     'reg' => $dailyBasis->vehicle->reg_no,
                 ],
                 'driver_id' => $dailyBasis->driver_id,
@@ -184,7 +189,10 @@ class DailyBasisController extends Controller
                         'is_half_day' => $dutyDate->is_half_day,
                     ];
                 }),
-                'invoice_count' => $invoice_count,
+                'client_invoices_count' => $dailyBasis->client_invoices_count,
+                'driver_invoices_count' => $dailyBasis->driver_invoices_count,
+                'vendor_invoices_count' => $dailyBasis->vendor_invoices_count,
+                'fuel_advance_payments_count' => $dailyBasis->fuel_advance_payments_count,
                 'created_at' => $dailyBasis->created_at,
                 'status' => $dailyBasis->status,
             ];
@@ -211,12 +219,13 @@ class DailyBasisController extends Controller
             return response()->json(['error' => 'Daily basis not found or unauthorized'], 404);
         }
 
-        $dailyBasis->load(['client:id,name',
+        $dailyBasis->load(['client:id,name,address,city,country,mobile_no,email',
             'vehicle:id,name,model_year as model,reg_no as reg',
-            'driver:id,name,mobile_no as mobile', 'dutyDates',
+            'driver:id,name,mobile_no,email', 'dutyDates' => function ($query) {
+                $query->orderBy('start_date', 'asc');
+            },
             'vendor:id,name'])
-            ->loadCount("clientInvoices", "fuelAdvancePayments");
-//        $dailyBasis = $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor'])
+            ->loadCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments");
 
         return response()->json(['message' => 'Daily basis retrieved successfully', 'data' => $dailyBasis], 200);
     }
@@ -254,7 +263,9 @@ class DailyBasisController extends Controller
             }
 
 
-            $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates', 'vendor']);
+            $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates' => function ($query) {
+                $query->orderBy('start_date', 'asc');
+            }, 'vendor'])->withCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments");
 
             $mappedData = [
                 'id' => $dailyBasis->id,
@@ -273,7 +284,7 @@ class DailyBasisController extends Controller
                 'vehicle' => [
                     'id' => $dailyBasis->vehicle->id,
                     'name' => $dailyBasis->vehicle->name,
-                    'model' => $dailyBasis->vehicle->model,
+                    'model_year' => $dailyBasis->vehicle->model_year,
                     'reg' => $dailyBasis->vehicle->reg_no,
                 ],
                 'driver_id' => $dailyBasis->driver_id,
@@ -290,6 +301,10 @@ class DailyBasisController extends Controller
                         'is_half_day' => $dutyDate->is_half_day,
                     ];
                 }),
+                'client_invoices_count' => $dailyBasis->client_invoices_count,
+                'driver_invoices_count' => $dailyBasis->driver_invoices_count,
+                'vendor_invoices_count' => $dailyBasis->vendor_invoices_count,
+                'fuel_advance_payments_count' => $dailyBasis->fuel_advance_payments_count,
                 'created_at' => $dailyBasis->created_at,
                 'status' => $dailyBasis->status,
             ];
@@ -310,7 +325,7 @@ class DailyBasisController extends Controller
             $dailyBasis = DailyBasis::findOrFail($id);
 
             // Check if there are any associated invoices
-            if ($dailyBasis->clientInvoices()->exists() || $dailyBasis->fuelAdvancePayments()->exists()) {
+            if ($dailyBasis->clientInvoices()->exists() || $dailyBasis->fuelAdvancePayments()->exists() || $dailyBasis->driverInvoices()->exists() || $dailyBasis->vendorInvoices()->exists()) {
                 return response()->json(['error' => 'Daily basis record cannot be deleted as it has associated invoices'], 422);
             }
 

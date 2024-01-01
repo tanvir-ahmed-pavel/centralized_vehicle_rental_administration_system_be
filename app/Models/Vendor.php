@@ -103,6 +103,15 @@ class Vendor extends Model
         return $this->hasMany(DailyBasis::class);
     }
 
+    public function invoices()
+    {
+        return $this->hasMany(VendorInvoice::class);
+    }
+    public function payments()
+    {
+        return $this->hasMany(VendorPayment::class);
+    }
+
     public function transactions()
     {
         return $this->hasMany(Transaction::class);

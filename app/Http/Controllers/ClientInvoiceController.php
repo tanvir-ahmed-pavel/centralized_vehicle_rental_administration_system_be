@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ClientInvoice;
 use App\Http\Controllers\Controller;
 use App\Traits\DataMapping;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 class ClientInvoiceController extends Controller
 {
     use DataMapping;
+
     /**
      * Display a listing of the client invoices.
      *
@@ -31,7 +33,7 @@ class ClientInvoiceController extends Controller
 
         // Fetch client invoices based on the authenticated user's company and apply sorting
         $clientInvoices = $company->clientInvoices()
-            ->with(['dailyBasis', 'monthlyContract', 'vehicle', 'client', 'driver', 'invoiceItems'])
+            ->with(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems'])
             ->orderBy($sortBy, $sortOrder);
 
         // Filter by dailyBasisId if provided in the query
@@ -70,52 +72,16 @@ class ClientInvoiceController extends Controller
 
         $clientInvoices = $clientInvoices->paginate($perPage, ['*'], 'page', $page);
 
-        // Map the data to the desired structure
-        $mappedData = $clientInvoices->map(function ($clientInvoice) {
-            return [
-                'id' => $clientInvoice->id,
-                'invoice_date' => $clientInvoice->invoice_date,
-                'invoice_number' => $clientInvoice->invoice_number,
-                'due_date' => $clientInvoice->due_date,
-                'daily_basis_id' => $clientInvoice->daily_basis_id,
-                'monthly_contract_id' => $clientInvoice->monthly_contract_id,
-                'grand_total' => $clientInvoice->grand_total,
-                'total_paid' => $clientInvoice->total_paid,
-                'client_id' => $clientInvoice->client_id,
-                'client' => [
-                    'id' => $clientInvoice->client->id,
-                    'name' => $clientInvoice->client->name,
-                    'address' => $clientInvoice->client->address,
-                    'mobile_no' => $clientInvoice->client->mobile_no,
-                ],
-                'vehicle_id' => $clientInvoice->vehicle_id,
-                'vehicle' => [
-                    'id' => $clientInvoice->vehicle->id,
-                    'name' => $clientInvoice->vehicle->name,
-                    'model' => $clientInvoice->vehicle->model,
-                    'reg' => $clientInvoice->vehicle->reg_no,
-                ],
-                'driver_id' => $clientInvoice->driver_id,
-                'driver' => [
-                    'id' => $clientInvoice->driver->id,
-                    'name' => $clientInvoice->driver->name,
-                    'mobile_no' => $clientInvoice->driver->mobile_no,
-                ],
-                'created_at' => $clientInvoice->created_at,
-                'status' => $clientInvoice->status,
-            ];
-        });
-
         return response()->json([
             'message' => 'Client invoices retrieved successfully',
-            'data' => $this->mapData($clientInvoices, $mappedData),
+            'data' => $clientInvoices,
         ], 200);
     }
 
     /**
      * Store a newly created client invoice.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
@@ -147,7 +113,7 @@ class ClientInvoiceController extends Controller
             }
 
             // Load relationships for the response
-            $clientInvoice->load(['dailyBasis', 'monthlyContract', 'vehicle', 'client', 'driver', 'invoiceItems']);
+            $clientInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems']);
 
             // Generate invoice number
             $clientInvoice->invoice_number = $clientInvoice->generateInvoiceNumber("Daily", $clientInvoice->client->name, $clientInvoice->id, $clientInvoice->daily_basis_id);
@@ -163,60 +129,24 @@ class ClientInvoiceController extends Controller
             $client->save();
 
             // Update daily basis status
-            $dailyBasis = $clientInvoice->dailyBasis;
-            $dailyBasis->status = "Invoice Created & Awaiting Payment";
-            $dailyBasis->save();
+            $dueDate = $clientInvoice->due_date ? Carbon::parse($clientInvoice->due_date) : null;
+            $currentDate = Carbon::now();
 
-
-            // Map the data to the desired structure
-            $mappedData = [
-                'id' => $clientInvoice->id,
-                'invoice_date' => $clientInvoice->invoice_date,
-                'due_date' => $clientInvoice->due_date,
-                'daily_basis_id' => $clientInvoice->daily_basis_id,
-                'monthly_contract_id' => $clientInvoice->monthly_contract_id,
-                'client_id' => $clientInvoice->client_id,
-                'client' => [
-                    'id' => $clientInvoice->client->id,
-                    'name' => $clientInvoice->client->name,
-                    'address' => $clientInvoice->client->address,
-                    'mobile_no' => $clientInvoice->client->mobile_no,
-                ],
-                'vehicle_id' => $clientInvoice->vehicle_id,
-                'vehicle' => [
-                    'id' => $clientInvoice->vehicle->id,
-                    'name' => $clientInvoice->vehicle->name,
-                    'model' => $clientInvoice->vehicle->model,
-                    'reg' => $clientInvoice->vehicle->reg_no,
-                ],
-                'driver_id' => $clientInvoice->driver_id,
-                'driver' => [
-                    'id' => $clientInvoice->driver->id,
-                    'name' => $clientInvoice->driver->name,
-                    'mobile_no' => $clientInvoice->driver->mobile_no,
-                ],
-                'invoice_items' => $clientInvoice->invoiceItems->map(function ($item) {
-                    return [
-                        'id' => $item->id,
-                        'description' => $item->description,
-                        'quantity' => $item->quantity,
-                        'unit' => $item->unit,
-                        'unit_rate' => $item->unit_rate,
-                        'tax_percent' => $item->tax_percent,
-                        'vat_percent' => $item->vat_percent,
-                        'tax_amount' => $item->tax_amount,
-                        'vat_amount' => $item->vat_amount,
-                        'total_amount' => $item->total_amount,
-                        'remarks' => $item->remarks
-                    ];
-                }),
-                'created_at' => $clientInvoice->created_at,
-                'status' => $clientInvoice->status,
-            ];
+            if ($dueDate && $currentDate->gt($dueDate)) {
+                $dailyBasis = $clientInvoice->dailyBasis;
+                $dailyBasis->status = "Payment Overdue";
+                $clientInvoice->status = "Payment Overdue";
+                $clientInvoice->save();
+                $dailyBasis->save();
+            } else {
+                $dailyBasis = $clientInvoice->dailyBasis;
+                $dailyBasis->status = "Invoice Created & Awaiting Payment";
+                $dailyBasis->save();
+            }
 
             return response()->json([
                 'message' => 'Client invoice created successfully',
-                'data' => $mappedData,
+                'data' => $clientInvoice,
             ], 201);
         });
     }
@@ -224,7 +154,7 @@ class ClientInvoiceController extends Controller
     /**
      * Get the details of a specific client invoice.
      *
-     * @param  int  $id
+     * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
     public function show($id)
@@ -238,84 +168,25 @@ class ClientInvoiceController extends Controller
         }
 
         // Load relationships for the response
-        $clientInvoice->load(['dailyBasis', 'monthlyContract', 'vehicle', 'client', 'driver', 'invoiceItems'])
+        $clientInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems'])
             ->loadCount("payments");
-
-        // Map the data to the desired structure
-        $mappedData = [
-            'id' => $clientInvoice->id,
-            'invoice_date' => $clientInvoice->invoice_date,
-            'due_date' => $clientInvoice->due_date,
-            'invoice_number' => $clientInvoice->invoice_number,
-            'daily_basis_id' => $clientInvoice->daily_basis_id,
-            'monthly_contract_id' => $clientInvoice->monthly_contract_id,
-            'grand_total' => $clientInvoice->grand_total,
-            'total_paid' => $clientInvoice->total_paid,
-            'advance_amount' => $clientInvoice->advance_amount,
-            'discount_amount' => $clientInvoice->discount_amount,
-            'vat_amount' => $clientInvoice->vat_amount,
-            'vat_percent' => $clientInvoice->vat_percent,
-            'tax_amount' => $clientInvoice->tax_amount,
-            'tax_percent' => $clientInvoice->tax_percent,
-            'round_adjustment' => $clientInvoice->round_adjustment,
-            'round_total' => $clientInvoice->round_total,
-            'client_id' => $clientInvoice->client_id,
-            'client' => [
-                'id' => $clientInvoice->client->id,
-                'name' => $clientInvoice->client->name,
-                'address' => $clientInvoice->client->address,
-                'mobile_no' => $clientInvoice->client->mobile_no,
-            ],
-            'vehicle_id' => $clientInvoice->vehicle_id,
-            'vehicle' => [
-                'id' => $clientInvoice->vehicle->id,
-                'name' => $clientInvoice->vehicle->name,
-                'model' => $clientInvoice->vehicle->model,
-                'reg' => $clientInvoice->vehicle->reg_no,
-            ],
-            'driver_id' => $clientInvoice->driver_id,
-            'driver' => [
-                'id' => $clientInvoice->driver->id,
-                'name' => $clientInvoice->driver->name,
-                'mobile_no' => $clientInvoice->driver->mobile_no,
-            ],
-            'invoice_items' => $clientInvoice->invoiceItems->map(function ($item) {
-                return [
-                    'id' => $item->id,
-                    'description' => $item->description,
-                    'quantity' => $item->quantity,
-                    'unit' => $item->unit,
-                    'unit_rate' => $item->unit_rate,
-                    'tax_percent' => $item->tax_percent,
-                    'vat_percent' => $item->vat_percent,
-                    'tax_amount' => $item->tax_amount,
-                    'vat_amount' => $item->vat_amount,
-                    'total_amount' => $item->total_amount,
-                    'remarks' => $item->remarks
-                ];
-            }),
-            'payments_count' => $clientInvoice->payments_count,
-            'is_active' => $clientInvoice->is_active,
-            'created_at' => $clientInvoice->created_at,
-            'status' => $clientInvoice->status,
-        ];
 
         return response()->json([
             'message' => 'Client invoice retrieved successfully',
-            'data' => $mappedData,
+            'data' => $clientInvoice,
         ], 200);
     }
 
     /**
      * Update a client invoice record.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
+     * @param \Illuminate\Http\Request $request
+     * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
     public function update(Request $request, $id)
     {
-        return DB::transaction(function () use ($request,$id) {
+        return DB::transaction(function () use ($request, $id) {
 
             $clientInvoice = ClientInvoice::findOrFail($id);
 
@@ -344,67 +215,34 @@ class ClientInvoiceController extends Controller
             }
 
             // Load relationships for the response
-            $clientInvoice->load(['dailyBasis', 'monthlyContract', 'vehicle', 'client', 'driver', 'invoiceItems']);
+            $clientInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems']);
 
             // Update client balance by increasing the grand_total amount of the invoice
             $client->current_balance += $clientInvoice->grand_total;
             $client->save();
 
             // Update daily basis status
-            $dailyBasis = $clientInvoice->dailyBasis;
-            $dailyBasis->status = "Invoice Created & Awaiting Payment";
-            $dailyBasis->save();
+            $dueDate = $clientInvoice->due_date ? Carbon::parse($clientInvoice->due_date) : null;
+            $currentDate = Carbon::now();
 
-            // Map the data to the desired structure
-            $mappedData = [
-                'id' => $clientInvoice->id,
-                'invoice_date' => $clientInvoice->invoice_date,
-                'due_date' => $clientInvoice->due_date,
-                'invoice_number' => $clientInvoice->invoice_number,
-                'daily_basis_id' => $clientInvoice->daily_basis_id,
-                'monthly_contract_id' => $clientInvoice->monthly_contract_id,
-                'client_id' => $clientInvoice->client_id,
-                'client' => [
-                    'id' => $clientInvoice->client->id,
-                    'name' => $clientInvoice->client->name,
-                    'address' => $clientInvoice->client->address,
-                    'mobile_no' => $clientInvoice->client->mobile_no,
-                ],
-                'vehicle_id' => $clientInvoice->vehicle_id,
-                'vehicle' => [
-                    'id' => $clientInvoice->vehicle->id,
-                    'name' => $clientInvoice->vehicle->name,
-                    'model' => $clientInvoice->vehicle->model,
-                    'reg' => $clientInvoice->vehicle->reg_no,
-                ],
-                'driver_id' => $clientInvoice->driver_id,
-                'driver' => [
-                    'id' => $clientInvoice->driver->id,
-                    'name' => $clientInvoice->driver->name,
-                    'mobile_no' => $clientInvoice->driver->mobile_no,
-                ],
-                'invoice_items' => $clientInvoice->invoiceItems->map(function ($item) {
-                    return [
-                        'id' => $item->id,
-                        'description' => $item->description,
-                        'quantity' => $item->quantity,
-                        'unit' => $item->unit,
-                        'unit_rate' => $item->unit_rate,
-                        'tax_percent' => $item->tax_percent,
-                        'vat_percent' => $item->vat_percent,
-                        'tax_amount' => $item->tax_amount,
-                        'vat_amount' => $item->vat_amount,
-                        'total_amount' => $item->total_amount,
-                        'remarks' => $item->remarks
-                    ];
-                }),
-                'created_at' => $clientInvoice->created_at,
-                'status' => $clientInvoice->status,
-            ];
+            if ($dueDate && $currentDate->gt($dueDate)) {
+                $dailyBasis = $clientInvoice->dailyBasis;
+                $dailyBasis->status = "Payment Overdue";
+                $dailyBasis->save();
+                $clientInvoice->status = "Payment Overdue";
+                $clientInvoice->save();
+            } elseif($clientInvoice->total_paid == 0) {
+                $dailyBasis = $clientInvoice->dailyBasis;
+                $dailyBasis->status = "Invoice Created & Awaiting Payment";
+                $dailyBasis->save();
+                $clientInvoice->status = "Created & Awaiting Payment";
+                $clientInvoice->save();
+            }
+
 
             return response()->json([
                 'message' => 'Client invoice updated successfully',
-                'data' => $mappedData,
+                'data' => $clientInvoice,
             ], 200);
         });
     }
@@ -412,7 +250,7 @@ class ClientInvoiceController extends Controller
     /**
      * Delete a client invoice record.
      *
-     * @param  int  $id
+     * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
 

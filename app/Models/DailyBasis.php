@@ -141,6 +141,11 @@ class DailyBasis extends Model
         return $this->hasMany(DriverInvoice::class);
     }
 
+    public function driverInvoicePayments()
+    {
+        return $this->hasMany(DriverPayment::class);
+    }
+
     public function vendor()
     {
         return $this->belongsTo(Vendor::class);

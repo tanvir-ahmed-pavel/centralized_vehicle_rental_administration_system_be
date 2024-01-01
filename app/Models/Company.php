@@ -117,6 +117,24 @@ class Company extends Model
         return $this->hasMany(ClientPayment::class);
     }
 
+    public function driverInvoices()
+    {
+        return $this->hasMany(DriverInvoice::class);
+    }
+    public function driverInvoicePayments()
+    {
+        return $this->hasMany(DriverPayment::class);
+    }
+
+    public function vendorInvoices()
+    {
+        return $this->hasMany(VendorInvoice::class);
+    }
+    public function vendorInvoicePayments()
+    {
+        return $this->hasMany(VendorPayment::class);
+    }
+
     public function fuelAdvancePayments()
     {
         return $this->hasMany(FuelAdvancePayment::class);

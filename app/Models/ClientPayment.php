@@ -148,9 +148,10 @@ class ClientPayment extends Model
      */
     public static function generatePaymentNumber($basisType, $clientName, $invoiceId, $paymentId)
     {
+        $separators = '/[\s\-._]+/';
         $clientNameInitials = implode('', array_map(function ($word) {
             return strtoupper(substr($word, 0, 1));
-        }, explode(' ', $clientName)));
+        }, preg_split($separators, $clientName)));
 
         $invoiceIdPrefix = str_pad($invoiceId, 3, '0', STR_PAD_LEFT);
         $paymentIdPrefix = str_pad($paymentId, 3, '0', STR_PAD_LEFT);
@@ -158,10 +159,10 @@ class ClientPayment extends Model
         $currentYearLastTwoDigits = date('y');
 
         if ($basisType === 'Daily') {
-            return "DBIP-C-{$clientNameInitials}-{$currentYearLastTwoDigits}-{$invoiceIdPrefix}P{$paymentIdPrefix}";
+            return "DB-CIP-{$clientNameInitials}-{$currentYearLastTwoDigits}-INV{$invoiceIdPrefix}-P{$paymentIdPrefix}";
         } elseif ($basisType === 'Monthly') {
             $currentMonth = date('m');
-            return "MBIP-C-{$clientNameInitials}-{$currentMonth}{$currentYearLastTwoDigits}-I{$invoiceIdPrefix}-{$paymentIdPrefix}";
+            return "MB-CIP-{$clientNameInitials}-{$currentMonth}{$currentYearLastTwoDigits}-INV{$invoiceIdPrefix}-P{$paymentIdPrefix}";
         } else {
             // Handle other basis types if needed
             return '';

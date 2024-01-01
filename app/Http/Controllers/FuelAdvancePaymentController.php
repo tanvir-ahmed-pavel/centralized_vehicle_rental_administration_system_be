@@ -93,6 +93,7 @@ class FuelAdvancePaymentController extends Controller
 
         // Calculate sum values
         $fuelAdvanceTotal = $fuelAdvancePayments->sum('amount');
+        $totalPaidForFuel = $fuelAdvancePayments->where('payment_type', 'Fuel Payment')->sum('amount');
         $clientFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Client')->sum('amount');
         $vendorFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Vendor')->sum('amount');
         $ownFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Self')->sum('amount');
@@ -101,6 +102,7 @@ class FuelAdvancePaymentController extends Controller
             'message' => 'Fuel advance payments retrieved successfully for the DailyBasis',
             'data' => $fuelAdvancePayments,
             'fuelAdvanceTotal' => $fuelAdvanceTotal,
+            'totalPaidForFuel' => $totalPaidForFuel,
             'clientFuelAdvanceTotal' => $clientFuelAdvanceTotal,
             'vendorFuelAdvanceTotal' => $vendorFuelAdvanceTotal,
             'ownFuelAdvanceTotal' => $ownFuelAdvanceTotal,
@@ -159,6 +161,7 @@ class FuelAdvancePaymentController extends Controller
 
             $fuelAdvancePayments = $dailyBasis->fuelAdvancePayments()->get();
             $fuelAdvanceTotal = $fuelAdvancePayments->sum('amount');
+            $totalPaidForFuel = $fuelAdvancePayments->where('payment_type', 'Fuel Payment')->sum('amount');
             $clientFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Client')->sum('amount');
             $vendorFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Vendor')->sum('amount');
             $ownFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Self')->sum('amount');
@@ -167,6 +170,7 @@ class FuelAdvancePaymentController extends Controller
                 'message' => 'Fuel advance payments retrieved successfully for the DailyBasis',
                 'data' => $fuelAdvancePayment,
                 'fuelAdvanceTotal' => $fuelAdvanceTotal,
+                'totalPaidForFuel' => $totalPaidForFuel,
                 'clientFuelAdvanceTotal' => $clientFuelAdvanceTotal,
                 'vendorFuelAdvanceTotal' => $vendorFuelAdvanceTotal,
                 'ownFuelAdvanceTotal' => $ownFuelAdvanceTotal,
@@ -203,6 +207,7 @@ class FuelAdvancePaymentController extends Controller
 
         $fuelAdvancePayments = $dailyBasis->fuelAdvancePayments()->get();
         $fuelAdvanceTotal = $fuelAdvancePayments->sum('amount');
+        $totalPaidForFuel = $fuelAdvancePayments->where('payment_type', 'Fuel Payment')->sum('amount');
         $clientFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Client')->sum('amount');
         $vendorFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Vendor')->sum('amount');
         $ownFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Self')->sum('amount');
@@ -211,6 +216,7 @@ class FuelAdvancePaymentController extends Controller
             'message' => 'Fuel advance payments retrieved successfully for the DailyBasis',
             'data' => $fuelAdvancePayment,
             'fuelAdvanceTotal' => $fuelAdvanceTotal,
+            'totalPaidForFuel' => $totalPaidForFuel,
             'clientFuelAdvanceTotal' => $clientFuelAdvanceTotal,
             'vendorFuelAdvanceTotal' => $vendorFuelAdvanceTotal,
             'ownFuelAdvanceTotal' => $ownFuelAdvanceTotal,
@@ -275,6 +281,7 @@ class FuelAdvancePaymentController extends Controller
 
             $fuelAdvancePayments = $fuelAdvancePayment->dailyBasis->fuelAdvancePayments()->get();
             $fuelAdvanceTotal = $fuelAdvancePayments->sum('amount');
+            $totalPaidForFuel = $fuelAdvancePayments->where('payment_type', 'Fuel Payment')->sum('amount');
             $clientFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Client')->sum('amount');
             $vendorFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Vendor')->sum('amount');
             $ownFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Self')->sum('amount');
@@ -282,6 +289,7 @@ class FuelAdvancePaymentController extends Controller
             return response()->json([
                 'message' => 'Fuel advance payments retrieved successfully for the DailyBasis',
                 'fuelAdvanceTotal' => $fuelAdvanceTotal,
+                'totalPaidForFuel' => $totalPaidForFuel,
                 'clientFuelAdvanceTotal' => $clientFuelAdvanceTotal,
                 'vendorFuelAdvanceTotal' => $vendorFuelAdvanceTotal,
                 'ownFuelAdvanceTotal' => $ownFuelAdvanceTotal,

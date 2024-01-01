@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\ClientInvoice;
 use App\Models\ClientPayment;
 use App\Models\DailyBasis;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -33,7 +34,7 @@ class ClientPaymentController extends Controller
 
         // Fetch client payments based on the authenticated user's company and apply sorting
         $clientPayments = $company->clientInvoicePayments()
-            ->with(['dailyBasis:id,client_id,vehicle_id,driver_id', 'clientInvoice:id,invoice_date,due_date,client_id,vehicle_id,driver_id', 'chartOfAccount:id,short_name,name'])
+            ->with(['dailyBasis:id,client_id,vehicle_id,driver_id', 'clientInvoice:id,invoice_date,due_date,client_id,vehicle_id,driver_id'])
             ->when($request->has('client_id'), function ($query) use ($request, $company) {
                 // Filter by client_id if the 'client_id' parameter is present in the request
                 $client_id = $request->client_id;
@@ -60,7 +61,7 @@ class ClientPaymentController extends Controller
     /**
      * Get payments for a specific client invoice.
      *
-     * @param  int  $invoiceId
+     * @param int $invoiceId
      * @return \Illuminate\Http\JsonResponse
      */
     public function getPaymentByInvoice(Request $request)
@@ -82,23 +83,23 @@ class ClientPaymentController extends Controller
             return response()->json(['error' => 'ClientInvoice not found or unauthorized'], 404);
         }
 
-            // Fetch payments under the specified invoice
-            $payments = $clientInvoice->payments()
-                ->with(['clientInvoice:id,client_id', 'clientInvoice.client:id,name', 'chartOfAccount:id,short_name,name'])
-                ->orderBy($sortBy, $sortOrder)
-                ->paginate($perPage, ['*'], 'page', $page);
+        // Fetch payments under the specified invoice
+        $payments = $clientInvoice->payments()
+            ->with(['clientInvoice:id,client_id', 'clientInvoice.client:id,name'])
+            ->orderBy($sortBy, $sortOrder)
+            ->paginate($perPage, ['*'], 'page', $page);
 
-            return response()->json([
-                'message' => 'Payments for the specified invoice retrieved successfully',
-                'data' => $payments,
-            ], 200);
+        return response()->json([
+            'message' => 'Payments for the specified invoice retrieved successfully',
+            'data' => $payments,
+        ], 200);
     }
 
 
     /**
      * Get payments for a specific client invoice.
      *
-     * @param  int  $invoiceId
+     * @param int $invoiceId
      * @return \Illuminate\Http\JsonResponse
      */
     public function getPaymentByClient(Request $request)
@@ -122,7 +123,7 @@ class ClientPaymentController extends Controller
 
         // Fetch payments under the specified invoice
         $payments = $client->payments()
-            ->with(['clientInvoice:id,client_id,invoice_number', 'chartOfAccount:id,short_name,name'])
+            ->with(['clientInvoice:id,client_id,invoice_number'])
             ->orderBy($sortBy, $sortOrder)
             ->paginate($perPage, ['*'], 'page', $page);
 
@@ -165,13 +166,20 @@ class ClientPaymentController extends Controller
             $invoice->total_paid += $clientPayment->amount;
             $invoice->save();
 
-            if($invoice->total_paid>0 && $invoice->total_paid < $invoice->grand_total){
-                $invoice->status = "Partially Paid";
-                $dailyBasis->status = "Partially Paid";
-            } elseif ($invoice->total_paid >= $invoice->grand_total){
+            $dueDate = $invoice->due_date ? Carbon::parse($invoice->due_date) : null;
+            $currentDate = Carbon::now();
+            if ($invoice->total_paid >= $invoice->grand_total) {
                 $invoice->status = "Paid";
                 $dailyBasis->status = "Paid & Closed";
+            } elseif ($dueDate && $currentDate->gt($dueDate) && $invoice->status != "Paid") {
+                $invoice->status = "Payment Overdue";
+                $dailyBasis->status = "Payment Overdue";
             }
+            elseif ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
+                $invoice->status = "Partially Paid";
+                $dailyBasis->status = "Partially Paid";
+            }
+
             $dailyBasis->save();
             $invoice->save();
 
@@ -179,7 +187,6 @@ class ClientPaymentController extends Controller
             $client = $invoice->client;
             $client->current_balance -= $clientPayment->amount;
             $client->save();
-
 
 
             $clientPayment->load(['clientInvoice:id,client_id,total_paid,grand_total', 'clientInvoice.client:id,name']);
@@ -210,7 +217,7 @@ class ClientPaymentController extends Controller
             return response()->json(['error' => 'ClientPayment not found or unauthorized'], 404);
         }
 
-        $clientPayment->load(['dailyBasis:id,client_id,vehicle_id,driver_id', 'clientInvoice:id,invoice_date,due_date,client_id,vehicle_id,driver_id', 'chartOfAccount:id,name']);
+        $clientPayment->load(['dailyBasis:id,client_id,vehicle_id,driver_id', 'clientInvoice:id,invoice_date,due_date,client_id,vehicle_id,driver_id']);
 
         return response()->json([
             'message' => 'Client payment retrieved successfully',
@@ -234,7 +241,7 @@ class ClientPaymentController extends Controller
 
         $clientPayment->update($validatedData);
 
-        $clientPayment->load(['dailyBasis:id,client_id,vehicle_id,driver_id', 'clientInvoice:id,invoice_date,due_date,client_id,vehicle_id,driver_id', 'chartOfAccount:id,name']);
+        $clientPayment->load(['dailyBasis:id,client_id,vehicle_id,driver_id', 'clientInvoice:id,invoice_date,due_date,client_id,vehicle_id,driver_id']);
 
         return response()->json([
             'message' => 'Client payment record updated successfully',
@@ -264,13 +271,13 @@ class ClientPaymentController extends Controller
             $client->current_balance += $clientPayment->amount;
             $client->save();
 
-            if($invoice->total_paid>0 && $invoice->total_paid<$invoice->grand_total){
+            if ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
                 $invoice->status = "Partially Paid";
                 $dailyBasis->status = "Partially Paid";
-            } elseif ($invoice->total_paid>=$invoice->grand_total){
+            } elseif ($invoice->total_paid >= $invoice->grand_total) {
                 $invoice->status = "Paid";
                 $dailyBasis->status = "Paid & Closed";
-            } else{
+            } else {
                 $invoice->status = "Created & Awaiting Payment";
                 $dailyBasis->status = "Invoice Created & Awaiting Payment";
             }

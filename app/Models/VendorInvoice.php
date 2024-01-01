@@ -5,7 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class VendorInvoice extends Model
 {
@@ -17,28 +19,158 @@ class VendorInvoice extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-//        'name',
-//        'email',
-//        'password',
+        'company_id',
+        'daily_basis_id',
+        'monthly_contract_id',
+        'vehicle_id',
+        'vendor_id',
+        "client_id",
+        'driver_id',
+        'status',
+        'invoice_number',
+        'invoice_date',
+        'due_date',
+        'sub_total',
+        'advance_amount',
+        'discount_amount',
+        'tax_percent',
+        'vat_percent',
+        'tax_amount',
+        'vat_amount',
+        'grand_total',
+        'total_paid',
+        'round_adjustment',
+        'round_total',
+        'remarks',
+        'is_active',
     ];
 
     /**
      * Validation helper.
      *
      */
-    public function validate()
+    protected $dates = ['deleted_at'];
+
+    public static function validationRules()
     {
-        return Validator::make($this->attributes, [
-//            'name' => 'required|max:255',
-//            'description' => 'required|max:255',
-//            'price' => 'required|numeric|min:0',
-        ]);
+        return [
+            'company_id' => 'nullable|exists:companies,id',
+            'daily_basis_id' => 'nullable|exists:daily_bases,id',
+            'monthly_contract_id' => 'nullable|exists:monthly_contracts,id',
+            'vehicle_id' => 'nullable|exists:vehicles,id',
+            'vendor_id' => 'nullable|exists:vendors,id',
+            'driver_id' => 'nullable|exists:drivers,id',
+            'client_id' => 'nullable|exists:clients,id',
+            'status' => ['nullable', Rule::in(['Created & Awaiting Payment', 'Partially Paid', 'Paid', 'Payment Overdue'])],
+            'invoice_date' => 'required|date',
+            'invoice_number' => 'nullable|string',
+            'due_date' => 'nullable|date',
+            'sub_total' => 'required|numeric',
+            'advance_amount' => 'required|numeric',
+            'tax_percent' => 'nullable|numeric',
+            'vat_percent' => 'nullable|numeric',
+            'tax_amount' => 'nullable|numeric',
+            'vat_amount' => 'nullable|numeric',
+            'grand_total' => 'required|numeric',
+            'total_paid' => 'required|numeric',
+            'round_adjustment' => 'required|numeric',
+            'round_total' => 'required|numeric',
+            'remarks' => 'nullable|string',
+            'is_active' => 'required|boolean',
+            'invoice_items' => ['required', 'array', 'min:1'],
+        ];
     }
 
-//    Events for cascading on delete
-    protected static function boot() {
+    protected static function boot()
+    {
         parent::boot();
 
+        // When a vendor invoice is deleted, also delete related transactions
+        static::deleting(function ($vendorInvoice) {
+            $vendorInvoice->transactions()->delete();
+        });
+    }
+
+    /**
+     * Generate invoice number based on the specified pattern.
+     *
+     * @param string $basisType
+     * @param string $vendorName
+     * @param int $invoiceId
+     * @return string
+     */
+    public static function generateInvoiceNumber($basisType, $vendorName, $invoiceId, $bookingId)
+    {
+        $separators = '/[\s\-._]+/';
+        $vendorNameInitials = implode('', array_map(function ($word) {
+            return strtoupper(substr($word, 0, 1));
+        }, preg_split($separators, $vendorName)));
+
+        $invoiceIdPrefix = str_pad($invoiceId, 3, '0', STR_PAD_LEFT);
+        $bookingIdPrefix = str_pad($bookingId, 3, '0', STR_PAD_LEFT);
+
+        $currentYearLastTwoDigits = date('y');
+
+        if ($basisType === 'Daily') {
+            return "DB-VI-{$vendorNameInitials}-{$currentYearLastTwoDigits}-B{$bookingIdPrefix}-{$invoiceIdPrefix}";
+        } elseif ($basisType === 'Monthly') {
+            $currentMonth = date('m');
+            return "MB-VI-{$vendorNameInitials}-{$currentMonth}{$currentYearLastTwoDigits}-B{$bookingIdPrefix}-{$invoiceIdPrefix}";
+        } else {
+            // Handle other basis types if needed
+            return '';
+        }
+    }
+
+    public function generateTransactions()
+    {
+        $chartOfAccountPayable = ChartOfAccount::where('name', 'Accounts Payable')->first();
+        $chartOfAccountVendorPayments = ChartOfAccount::where('name', 'Vendor Payments')->first(); // Assuming '4100' is the code for Sales
+
+        if (!$chartOfAccountPayable || !$chartOfAccountVendorPayments) {
+            // Handle the case where one or both chart of accounts are not found
+
+            $missingAccounts = [];
+
+            if (!$chartOfAccountPayable) {
+                $missingAccounts[] = 'Accounts Payable';
+            }
+
+            if (!$chartOfAccountVendorPayments) {
+                $missingAccounts[] = 'Vendor Payments';
+            }
+
+            $errorMessage = "Chart of accounts not found for: " . implode(', ', $missingAccounts);
+
+            return response()->json(['error' => $errorMessage], 404);
+        }
+
+        $this->createTransaction($chartOfAccountPayable, ($this->grand_total - $this->advance_amount), 'Credit', 'Vendor Invoice');
+        $this->createTransaction($chartOfAccountVendorPayments, ($this->grand_total - $this->advance_amount), 'Debit', 'Vendor Invoice');
+        return response()->json(['success' => 'Transactions created successfully'], 200);
+    }
+
+    private function createTransaction($chartOfAccount, $amount, $type, $description)
+    {
+        // Determine whether it's a debit or credit
+        $debitAmount = ($type === 'Debit') ? $amount : null;
+        $creditAmount = ($type === 'Credit') ? $amount : null;
+
+        $transaction = Transaction::create([
+            'company_id' => $this->company_id,
+            'daily_basis_id' => $this->daily_basis_id,
+            'monthly_contract_id' => $this->monthly_contract_id,
+            'vendor_id' => $this->vendor_id,
+            'chart_of_account_id' => $chartOfAccount->id,
+            'vendor_invoice_id' => $this->id,
+            'user_id' => Auth::id(),
+            'debit' => $debitAmount,
+            'credit' => $creditAmount,
+            'transaction_date' => $this->created_at, // Or use a relevant date
+            'description' => $description." - ". $type ." (". $chartOfAccount->name.")." ,
+        ]);
+
+        return $transaction;
     }
 
     public function company()
@@ -60,14 +192,20 @@ class VendorInvoice extends Model
     {
         return $this->belongsTo(Vendor::class);
     }
+
     public function vehicle()
     {
-        return $this->hasMany(Vehicle::class);
+        return $this->belongsTo(Vehicle::class);
+    }
+
+    public function client()
+    {
+        return $this->belongsTo(Client::class);
     }
 
     public function driver()
     {
-        return $this->hasMany(Driver::class);
+        return $this->belongsTo(Driver::class);
     }
 
     public function invoiceItems()

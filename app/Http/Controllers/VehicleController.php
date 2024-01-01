@@ -111,7 +111,6 @@ class VehicleController extends Controller
         $mappedData =[
                 'id' => $vehicle->id,
                 'name' => $vehicle->name,
-                'model' => $vehicle->model,
                 'reg_no' => $vehicle->reg_no,
                 'vehicle_owner' => $vehicle->vehicle_owner,
                 'fuel_type' => $vehicle->fuel_type,
@@ -180,7 +179,6 @@ class VehicleController extends Controller
         $mappedData =[
             'id' => $vehicle->id,
             'name' => $vehicle->name,
-            'model' => $vehicle->model,
             'reg_no' => $vehicle->reg_no,
             'vehicle_owner' => $vehicle->vehicle_owner,
             'fuel_type' => $vehicle->fuel_type,

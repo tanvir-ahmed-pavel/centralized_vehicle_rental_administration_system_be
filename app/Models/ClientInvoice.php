@@ -99,9 +99,10 @@ class ClientInvoice extends Model
      */
     public static function generateInvoiceNumber($basisType, $clientName, $invoiceId, $bookingId)
     {
+        $separators = '/[\s\-._]+/';
         $clientNameInitials = implode('', array_map(function ($word) {
             return strtoupper(substr($word, 0, 1));
-        }, explode(' ', $clientName)));
+        }, preg_split($separators, $clientName)));
 
         $invoiceIdPrefix = str_pad($invoiceId, 3, '0', STR_PAD_LEFT);
         $bookingIdPrefix = str_pad($bookingId, 3, '0', STR_PAD_LEFT);
@@ -109,10 +110,10 @@ class ClientInvoice extends Model
         $currentYearLastTwoDigits = date('y');
 
         if ($basisType === 'Daily') {
-            return "DBI-C-{$clientNameInitials}-{$currentYearLastTwoDigits}-B{$bookingIdPrefix}-{$invoiceIdPrefix}";
+            return "DB-CI-{$clientNameInitials}-{$currentYearLastTwoDigits}-B{$bookingIdPrefix}-INV{$invoiceIdPrefix}";
         } elseif ($basisType === 'Monthly') {
             $currentMonth = date('m');
-            return "MBI-C-{$clientNameInitials}-{$currentMonth}{$currentYearLastTwoDigits}-B{$bookingIdPrefix}-{$invoiceIdPrefix}";
+            return "MB-CI-{$clientNameInitials}-{$currentMonth}{$currentYearLastTwoDigits}-B{$bookingIdPrefix}-INV{$invoiceIdPrefix}";
         } else {
             // Handle other basis types if needed
             return '';
@@ -189,6 +190,7 @@ class ClientInvoice extends Model
     {
         return $this->belongsTo(Client::class);
     }
+
     public function vehicle()
     {
         return $this->belongsTo(Vehicle::class);
