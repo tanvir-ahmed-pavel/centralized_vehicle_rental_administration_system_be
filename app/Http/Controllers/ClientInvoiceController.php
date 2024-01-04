@@ -113,7 +113,7 @@ class ClientInvoiceController extends Controller
             }
 
             // Load relationships for the response
-            $clientInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems']);
+            $clientInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no,current_balance', 'driver:id,name,mobile_no', 'invoiceItems']);
 
             // Generate invoice number
             $clientInvoice->invoice_number = $clientInvoice->generateInvoiceNumber("Daily", $clientInvoice->client->name, $clientInvoice->id, $clientInvoice->daily_basis_id);

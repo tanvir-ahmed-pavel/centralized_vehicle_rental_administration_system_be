@@ -151,55 +151,17 @@ class DailyBasisController extends Controller
                 }
             }
 
-            $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates' => function ($query) {
-                $query->orderBy('start_date', 'asc');
-            }, 'vendor'])->withCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments");
-
-            $mappedData = [
-                'id' => $dailyBasis->id,
-                'daily_basis_number' => $dailyBasis->daily_basis_number,
-                'client_id' => $dailyBasis->client_id,
-                'client' => [
-                    'id' => $dailyBasis->client->id,
-                    'name' => $dailyBasis->client->name,
-                ],
-                'vendor_id' => $dailyBasis->vendor_id,
-                'vendor' => [
-                    'id' => optional($dailyBasis->vendor)->id,
-                    'name' => optional($dailyBasis->vendor)->name,
-                ],
-                'vehicle_id' => $dailyBasis->vehicle_id,
-                'vehicle' => [
-                    'id' => $dailyBasis->vehicle->id,
-                    'name' => $dailyBasis->vehicle->name,
-                    'model_year' => $dailyBasis->vehicle->model_year,
-                    'reg' => $dailyBasis->vehicle->reg_no,
-                ],
-                'driver_id' => $dailyBasis->driver_id,
-                'driver' => [
-                    'id' => $dailyBasis->driver->id,
-                    'name' => $dailyBasis->driver->name,
-                    'mobile' => $dailyBasis->driver->mobile_no,
-                ],
-                'duty_dates' => $dailyBasis->dutyDates->map(function ($dutyDate) {
-                    return [
-                        'id' => $dutyDate->id,
-                        'start_date' => $dutyDate->start_date,
-                        'end_date' => $dutyDate->end_date,
-                        'is_half_day' => $dutyDate->is_half_day,
-                    ];
-                }),
-                'client_invoices_count' => $dailyBasis->client_invoices_count,
-                'driver_invoices_count' => $dailyBasis->driver_invoices_count,
-                'vendor_invoices_count' => $dailyBasis->vendor_invoices_count,
-                'fuel_advance_payments_count' => $dailyBasis->fuel_advance_payments_count,
-                'created_at' => $dailyBasis->created_at,
-                'status' => $dailyBasis->status,
-            ];
+            $dailyBasis->load(['client:id,name,address,city,country,mobile_no,email',
+                'vehicle:id,name,model_year as model,reg_no as reg',
+                'driver:id,name,mobile_no,email', 'dutyDates' => function ($query) {
+                    $query->orderBy('start_date', 'asc');
+                },
+                'vendor:id,name,address,city,country,mobile_no,email'])
+                ->loadCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments");
 
             return response()->json([
                 'message' => 'Daily basis record created successfully',
-                'data' => $mappedData,
+                'data' => $dailyBasis,
             ], 201);
         });
     }
@@ -224,7 +186,7 @@ class DailyBasisController extends Controller
             'driver:id,name,mobile_no,email', 'dutyDates' => function ($query) {
                 $query->orderBy('start_date', 'asc');
             },
-            'vendor:id,name'])
+            'vendor:id,name,address,city,country,mobile_no,email'])
             ->loadCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments");
 
         return response()->json(['message' => 'Daily basis retrieved successfully', 'data' => $dailyBasis], 200);
@@ -263,53 +225,15 @@ class DailyBasisController extends Controller
             }
 
 
-            $dailyBasis->with(['client', 'vehicle', 'driver', 'dutyDates' => function ($query) {
-                $query->orderBy('start_date', 'asc');
-            }, 'vendor'])->withCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments");
+            $dailyBasis->load(['client:id,name,address,city,country,mobile_no,email',
+                'vehicle:id,name,model_year as model,reg_no as reg',
+                'driver:id,name,mobile_no,email', 'dutyDates' => function ($query) {
+                    $query->orderBy('start_date', 'asc');
+                },
+                'vendor:id,name,address,city,country,mobile_no,email'])
+                ->loadCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments");
 
-            $mappedData = [
-                'id' => $dailyBasis->id,
-                'daily_basis_number' => $dailyBasis->daily_basis_number,
-                'client_id' => $dailyBasis->client_id,
-                'client' => [
-                    'id' => $dailyBasis->client->id,
-                    'name' => $dailyBasis->client->name,
-                ],
-                'vendor_id' => $dailyBasis->vendor_id,
-                'vendor' => [
-                    'id' => optional($dailyBasis->vendor)->id,
-                    'name' => optional($dailyBasis->vendor)->name,
-                ],
-                'vehicle_id' => $dailyBasis->vehicle_id,
-                'vehicle' => [
-                    'id' => $dailyBasis->vehicle->id,
-                    'name' => $dailyBasis->vehicle->name,
-                    'model_year' => $dailyBasis->vehicle->model_year,
-                    'reg' => $dailyBasis->vehicle->reg_no,
-                ],
-                'driver_id' => $dailyBasis->driver_id,
-                'driver' => [
-                    'id' => $dailyBasis->driver->id,
-                    'name' => $dailyBasis->driver->name,
-                    'mobile' => $dailyBasis->driver->mobile_no,
-                ],
-                'duty_dates' => $dailyBasis->dutyDates->map(function ($dutyDate) {
-                    return [
-                        'id' => $dutyDate->id,
-                        'start_date' => $dutyDate->start_date,
-                        'end_date' => $dutyDate->end_date,
-                        'is_half_day' => $dutyDate->is_half_day,
-                    ];
-                }),
-                'client_invoices_count' => $dailyBasis->client_invoices_count,
-                'driver_invoices_count' => $dailyBasis->driver_invoices_count,
-                'vendor_invoices_count' => $dailyBasis->vendor_invoices_count,
-                'fuel_advance_payments_count' => $dailyBasis->fuel_advance_payments_count,
-                'created_at' => $dailyBasis->created_at,
-                'status' => $dailyBasis->status,
-            ];
-
-            return response()->json(['message' => 'Daily basis record updated successfully', 'data' => $mappedData], 200);
+            return response()->json(['message' => 'Daily basis record updated successfully', 'data' => $dailyBasis], 200);
         });
     }
 

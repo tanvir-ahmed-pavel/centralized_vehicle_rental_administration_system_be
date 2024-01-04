@@ -33,6 +33,12 @@
     },
     "scripts": {
         "serve": "php artisan serve --host=192.168.0.107 --port=8000",
+        "reset": [
+            "php artisan migrate:fresh",
+            "php artisan passport:install",
+            "php artisan db:seed",
+            "php artisan serve"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

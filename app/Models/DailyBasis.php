@@ -97,9 +97,10 @@ class DailyBasis extends Model
 
     public static function generateDailyBasisNumber( $clientName, $bookingId)
     {
+        $separators = '/[\s\-._]+/';
         $clientNameInitials = implode('', array_map(function ($word) {
             return strtoupper(substr($word, 0, 1));
-        }, explode(' ', $clientName)));
+        }, preg_split($separators, $clientName)));
 
         $bookingIdPrefix = str_pad($bookingId, 3, '0', STR_PAD_LEFT);
 
