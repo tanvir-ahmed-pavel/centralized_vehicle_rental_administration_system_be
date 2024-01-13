@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
-class VendorInvoiceController extends Controller
+class VendorMonthlyInvoiceController extends Controller
 {
     /**
      * Display a listing of the vendor invoices.
@@ -158,7 +158,7 @@ class VendorInvoiceController extends Controller
         }
 
         // Load relationships for the response
-        $vendorInvoice->load(['vehicle:id,name,model_year,reg_no', 'driver:id,name,address,mobile_no', 'client:id,name,mobile_no', 'vendor:id,name,address,city,country,email,mobile_no', 'invoiceItems'])
+        $vendorInvoice->load(['vehicle:id,name,model_year,reg_no', 'driver:id,name,address,mobile_no', 'client:id,name,mobile_no', 'vendor:id,name,mobile_no', 'invoiceItems'])
             ->loadCount("payments");
 
         return response()->json([

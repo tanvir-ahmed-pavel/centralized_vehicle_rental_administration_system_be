@@ -108,6 +108,11 @@ class Company extends Model
         return $this->hasMany(DailyBasis::class);
     }
 
+    public function monthlyContracts()
+    {
+        return $this->hasMany(MonthlyContract::class);
+    }
+
     public function clientInvoices()
     {
         return $this->hasMany(ClientInvoice::class);

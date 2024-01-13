@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
-class ClientInvoiceController extends Controller
+class ClientMonthlyInvoiceController extends Controller
 {
     use DataMapping;
 
@@ -36,18 +36,18 @@ class ClientInvoiceController extends Controller
             ->with(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems'])
             ->orderBy($sortBy, $sortOrder);
 
-        // Filter by dailyBasisId if provided in the query
-        if ($request->has('dailyBasisId')) {
-            $dailyBasisId = $request->dailyBasisId;
+        // Filter by monthlyContractId if provided in the query
+        if ($request->has('monthlyContractId')) {
+            $monthlyContractId = $request->monthlyContractId;
 
-            // Check if the provided dailyBasisId belongs to the company for ownership verification
-            $dailyBasis = $company->dailyBases()->find($dailyBasisId);
+            // Check if the provided monthlyContractId belongs to the company for ownership verification
+            $monthlyContract = $company->dailyBases()->find($monthlyContractId);
 
-            if (!$dailyBasis) {
-                return response()->json(['error' => 'DailyBasis not found or unauthorized'], 404);
+            if (!$monthlyContract) {
+                return response()->json(['error' => 'Monthly basis not found or unauthorized'], 404);
             }
 
-            $clientInvoices->where('daily_basis_id', $dailyBasisId);
+            $clientInvoices->where('monthly_contract_id', $monthlyContractId);
         }
 
         // Filter by status if the 'status' parameter is present in the request
@@ -116,7 +116,7 @@ class ClientInvoiceController extends Controller
             $clientInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no,current_balance', 'driver:id,name,mobile_no', 'invoiceItems']);
 
             // Generate invoice number
-            $clientInvoice->invoice_number = $clientInvoice->generateInvoiceNumber("Daily", $clientInvoice->client->name, $clientInvoice->id, $clientInvoice->daily_basis_id);
+            $clientInvoice->invoice_number = $clientInvoice->generateInvoiceNumber("Monthly", $clientInvoice->client->name, $clientInvoice->id, $clientInvoice->monthly_contract_id);
             $clientInvoice->save();
 
 //            Generate Chart of accounts transaction
@@ -133,15 +133,15 @@ class ClientInvoiceController extends Controller
             $currentDate = Carbon::now();
 
             if ($dueDate && $currentDate->gt($dueDate)) {
-                $dailyBasis = $clientInvoice->dailyBasis;
-                $dailyBasis->status = "Payment Overdue";
+                $monthlyContract = $clientInvoice->monthlyContract;
+                $monthlyContract->status = "Payment Overdue";
                 $clientInvoice->status = "Payment Overdue";
                 $clientInvoice->save();
-                $dailyBasis->save();
+                $monthlyContract->save();
             } else {
-                $dailyBasis = $clientInvoice->dailyBasis;
-                $dailyBasis->status = "Invoice Created & Awaiting Payment";
-                $dailyBasis->save();
+                $monthlyContract = $clientInvoice->monthlyContract;
+                $monthlyContract->status = "Invoice Created & Awaiting Payment";
+                $monthlyContract->save();
             }
 
             return response()->json([
@@ -168,7 +168,7 @@ class ClientInvoiceController extends Controller
         }
 
         // Load relationships for the response
-        $clientInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,city,country,email,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems'])
+        $clientInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems'])
             ->loadCount("payments");
 
         return response()->json([
@@ -226,15 +226,15 @@ class ClientInvoiceController extends Controller
             $currentDate = Carbon::now();
 
             if ($dueDate && $currentDate->gt($dueDate)) {
-                $dailyBasis = $clientInvoice->dailyBasis;
-                $dailyBasis->status = "Payment Overdue";
-                $dailyBasis->save();
+                $monthlyContract = $clientInvoice->monthlyContract;
+                $monthlyContract->status = "Payment Overdue";
+                $monthlyContract->save();
                 $clientInvoice->status = "Payment Overdue";
                 $clientInvoice->save();
             } elseif($clientInvoice->total_paid == 0) {
-                $dailyBasis = $clientInvoice->dailyBasis;
-                $dailyBasis->status = "Invoice Created & Awaiting Payment";
-                $dailyBasis->save();
+                $monthlyContract = $clientInvoice->monthlyContract;
+                $monthlyContract->status = "Invoice Created & Awaiting Payment";
+                $monthlyContract->save();
                 $clientInvoice->status = "Created & Awaiting Payment";
                 $clientInvoice->save();
             }
@@ -277,9 +277,9 @@ class ClientInvoiceController extends Controller
             $client->save();
 
             // Update daily basis status
-            $dailyBasis = $clientInvoice->dailyBasis;
-            $dailyBasis->status = "To Make Invoice";
-            $dailyBasis->save();
+            $monthlyContract = $clientInvoice->monthlyContract;
+            $monthlyContract->status = "To Make Invoice";
+            $monthlyContract->save();
 
             // Perform the deletion
             $clientInvoice->delete();

@@ -20,6 +20,7 @@ class DutyDate extends Model
 
     protected $fillable = [
         'daily_basis_id',
+        'monthly_contract_id',
         'start_date',
         'end_date',
         'is_half_day',
@@ -34,6 +35,7 @@ class DutyDate extends Model
     {
         return [
             'daily_basis_id' => 'nullable|exists:daily_bases,id',
+            'monthly_contract_id' => 'nullable|exists:monthly_contracts,id',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date',
             'is_half_day' => 'boolean',
@@ -43,5 +45,9 @@ class DutyDate extends Model
     public function dailyBasis()
     {
         return $this->belongsTo(DailyBasis::class);
+    }
+    public function monthlyContract()
+    {
+        return $this->belongsTo(MonthlyContract::class);
     }
 }

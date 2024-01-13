@@ -27,6 +27,7 @@ return new class extends Migration
             $table->date('for_the_month')->nullable();
             $table->date('invoice_date');
             $table->date('due_date')->nullable();
+            $table->date('for_the_month')->nullable();
             $table->decimal('sub_total', 10, 2)->default(0);
             $table->decimal('advance_amount', 10, 2)->default(0);
             $table->decimal('discount_amount', 10, 2)->default(0);
