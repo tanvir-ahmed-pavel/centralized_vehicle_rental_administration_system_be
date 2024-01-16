@@ -13,7 +13,7 @@ class MonthlyContractController extends Controller
 {
     use DataMapping;
     /**
-     * Get a paginated list of daily basis records.
+     * Get a paginated list of monthly contract records.
      *
      * @return \Illuminate\Http\JsonResponse
      */
@@ -29,11 +29,11 @@ class MonthlyContractController extends Controller
         $sortBy = $request->has('sort_by') ? $request->sort_by : 'id';
         $sortOrder = $request->has('sort_order') ? $request->sort_order : 'desc';
 
-        // Fetch daily basis records based on the authenticated user's company and apply sorting
-        $monthlyContracts = $company->monthlyContracts()
-            ->with(['client', 'vehicle', 'driver', 'dutyDate' => function ($query) {
-                $query->orderBy('start_date', 'asc');
-            }, 'vendor'])
+        // Fetch monthly contract records based on the authenticated user's company and apply sorting
+        $monthlyContracts = $company->monthlyContracts()->with(['client:id,name,address,city,country,mobile_no,email',
+            'vehicle:id,name,model_year as model,reg_no as reg',
+            'driver:id,name,mobile_no,email', 'contractPeriod',
+            'vendor:id,name,address,city,country,mobile_no,email'])
             ->withCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments")
             ->when($request->has('status'), function ($query) use ($request) {
                 // Filter by status if the 'status' parameter is present in the request
@@ -57,59 +57,60 @@ class MonthlyContractController extends Controller
             ->paginate($perPage, ['*'], 'page', $page);
 
         // Map the data to the desired structure
-        $mappedData = $monthlyContracts->map(function ($monthlyContract) {
-            return [
-                'id' => $monthlyContract->id,
-                'daily_basis_number' => $monthlyContract->daily_basis_number,
-                'client_id' => $monthlyContract->client_id,
-                'client' => [
-                    'id' => $monthlyContract->client->id,
-                    'name' => $monthlyContract->client->name,
-                ],
-                'vendor_id' => $monthlyContract->vendor_id,
-                'vendor' => [
-                    'id' => optional($monthlyContract->vendor)->id,
-                    'name' => optional($monthlyContract->vendor)->name,
-                ],
-                'vehicle_id' => $monthlyContract->vehicle_id,
-                'vehicle' => [
-                    'id' => $monthlyContract->vehicle->id,
-                    'name' => $monthlyContract->vehicle->name,
-                    'model_year' => $monthlyContract->vehicle->model_year,
-                    'reg' => $monthlyContract->vehicle->reg_no,
-                ],
-                'driver_id' => $monthlyContract->driver_id,
-                'driver' => [
-                    'id' => $monthlyContract->driver->id,
-                    'name' => $monthlyContract->driver->name,
-                    'mobile' => $monthlyContract->driver->mobile_no,
-                ],
-                'duty_dates' => $monthlyContract->dutyDate->map(function ($dutyDate) {
-                    return [
-                        'id' => $dutyDate->id,
-                        'start_date' => $dutyDate->start_date,
-                        'end_date' => $dutyDate->end_date,
-                        'is_half_day' => $dutyDate->is_half_day,
-                    ];
-                }),
-                'client_invoices_count' => $monthlyContract->client_invoices_count,
-                'driver_invoices_count' => $monthlyContract->driver_invoices_count,
-                'vendor_invoices_count' => $monthlyContract->vendor_invoices_count,
-                'fuel_advance_payments_count' => $monthlyContract->fuel_advance_payments_count,
-                'created_at' => $monthlyContract->created_at,
-                'status' => $monthlyContract->status,
-            ];
-        });
+//        $mappedData = $monthlyContracts->map(function ($monthlyContract) {
+//            return [
+//                'id' => $monthlyContract->id,
+//                'monthly_contract_number' => $monthlyContract->monthly_contract_number,
+//                'client_id' => $monthlyContract->client_id,
+//                'client' => [
+//                    'id' => $monthlyContract->client->id,
+//                    'name' => $monthlyContract->client->name,
+//                ],
+//                'vendor_id' => $monthlyContract->vendor_id,
+//                'vendor' => [
+//                    'id' => optional($monthlyContract->vendor)->id,
+//                    'name' => optional($monthlyContract->vendor)->name,
+//                ],
+//                'vehicle_id' => $monthlyContract->vehicle_id,
+//                'vehicle' => [
+//                    'id' => $monthlyContract->vehicle->id,
+//                    'name' => $monthlyContract->vehicle->name,
+//                    'model_year' => $monthlyContract->vehicle->model_year,
+//                    'reg' => $monthlyContract->vehicle->reg_no,
+//                ],
+//                'driver_id' => $monthlyContract->driver_id,
+//                'driver' => [
+//                    'id' => $monthlyContract->driver->id,
+//                    'name' => $monthlyContract->driver->name,
+//                    'mobile' => $monthlyContract->driver->mobile_no,
+//                ],
+//                'duty_dates' => $monthlyContract->contractPeriod->map(function ($contractPeriod) {
+//                    return [
+//                        'id' => $contractPeriod->id,
+//                        'start_date' => $contractPeriod->start_date,
+//                        'end_date' => $contractPeriod->end_date,
+//                        'is_half_day' => $contractPeriod->is_half_day,
+//                    ];
+//                }),
+//                'client_invoices_count' => $monthlyContract->client_invoices_count,
+//                'driver_invoices_count' => $monthlyContract->driver_invoices_count,
+//                'vendor_invoices_count' => $monthlyContract->vendor_invoices_count,
+//                'fuel_advance_payments_count' => $monthlyContract->fuel_advance_payments_count,
+//                'created_at' => $monthlyContract->created_at,
+//                'status' => $monthlyContract->status,
+//            ];
+//        });
 
         return response()->json([
             'message' => 'Monthly contract records retrieved successfully',
-            'data' => $this->mapData($monthlyContracts, $mappedData)
+//            'data' => $this->mapData($monthlyContracts, $mappedData)
+            'data' => $monthlyContracts
         ], 200);
 
     }
 
     /**
-     * Create a new daily basis record.
+     * Create a new monthly contract record.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
@@ -132,28 +133,25 @@ class MonthlyContractController extends Controller
                 return response()->json(['error' => 'Company not found for the user'], 404);
             }
 
-            // Create the daily basis record
+            // Create the monthly contract record
             $monthlyContract = $company->monthlyContracts()->create($validatedData);
-            $monthlyContract->daily_basis_number = $monthlyContract->generateMonthlyContractNumber($monthlyContract->client->name, $monthlyContract->id);
+            $monthlyContract->monthly_contract_number = $monthlyContract->generateMonthlyContractNumber($monthlyContract->client->name, $monthlyContract->id);
             $monthlyContract->save();
 
 
 
 
             // Create duty date records if provided in the request
-            if ($request->has('duty_dates') && is_array($request->duty_dates)) {
-
-                foreach ($request->duty_dates as $dutyDateData) {
-                    $monthlyContract->dutyDate()->create([
-                        "start_date" => $dutyDateData,
-                        "end_date" => $dutyDateData,
-                    ]);
-                }
+            if ($request->has('duty_dates')) {
+                $contractPeriod = $monthlyContract->contractPeriod()->create([
+                    "start_date" => $request->duty_dates[0],
+                    "end_date" => $request->duty_dates[1],
+                ]);
             }
 
             $monthlyContract->load(['client:id,name,address,city,country,mobile_no,email',
                 'vehicle:id,name,model_year as model,reg_no as reg',
-                'driver:id,name,mobile_no,email', 'dutyDate',
+                'driver:id,name,mobile_no,email', 'contractPeriod',
                 'vendor:id,name,address,city,country,mobile_no,email'])
                 ->loadCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments");
 
@@ -165,7 +163,7 @@ class MonthlyContractController extends Controller
     }
 
     /**
-     * Get the details of a specific daily basis record.
+     * Get the details of a specific monthly contract record.
      *
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
@@ -181,7 +179,7 @@ class MonthlyContractController extends Controller
 
         $monthlyContract->load(['client:id,name,address,city,country,mobile_no,email',
             'vehicle:id,name,model_year as model,reg_no as reg',
-            'driver:id,name,mobile_no,email', 'dutyDate' => function ($query) {
+            'driver:id,name,mobile_no,email', 'contractPeriod' => function ($query) {
                 $query->orderBy('start_date', 'asc');
             },
             'vendor:id,name,address,city,country,mobile_no,email'])
@@ -191,7 +189,7 @@ class MonthlyContractController extends Controller
     }
 
     /**
-     * Update a daily basis record.
+     * Update a monthly contract record.
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
@@ -213,19 +211,20 @@ class MonthlyContractController extends Controller
 
             $monthlyContract->update($validatedData);
 
-            $monthlyContract->dutyDate()->delete();
+            $monthlyContract->contractPeriod()->delete();
             // Assuming 'duty_dates' is an array of date data
-            foreach ($request->duty_dates as $dutyDateData) {
-                $monthlyContract->dutyDate()->updateOrCreate([
-                    "start_date" => $dutyDateData,
-                    "end_date" => $dutyDateData,
+
+            if ($request->has('duty_dates')) {
+                $contractPeriod = $monthlyContract->contractPeriod()->updateOrCreate([
+                    "start_date" => $request->duty_dates[0],
+                    "end_date" => $request->duty_dates[1],
                 ]);
             }
 
 
             $monthlyContract->load(['client:id,name,address,city,country,mobile_no,email',
                 'vehicle:id,name,model_year as model,reg_no as reg',
-                'driver:id,name,mobile_no,email', 'dutyDate',
+                'driver:id,name,mobile_no,email', 'contractPeriod',
                 'vendor:id,name,address,city,country,mobile_no,email'])
                 ->loadCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments");
 
@@ -234,7 +233,7 @@ class MonthlyContractController extends Controller
     }
 
     /**
-     * Delete a daily basis record.
+     * Delete a monthly contract record.
      *
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse

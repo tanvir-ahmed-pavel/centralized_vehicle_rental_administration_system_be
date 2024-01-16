@@ -36,8 +36,7 @@
         "reset": [
             "php artisan migrate:fresh",
             "php artisan passport:install",
-            "php artisan db:seed",
-            "php artisan serve"
+            "php artisan db:seed"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

@@ -9,11 +9,13 @@ use App\Http\Controllers\DriverController;
 use App\Http\Controllers\DriverInvoiceController;
 use App\Http\Controllers\DriverPaymentController;
 use App\Http\Controllers\FuelAdvancePaymentController;
+use App\Http\Controllers\MonthlyContractController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\VendorInvoiceController;
 use App\Http\Controllers\VendorPaymentController;
+use App\Models\MonthlyContract;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -61,6 +63,9 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('dailyBasis', DailyBasisController::class);
     Route::resource('fuelAdvancePayments', FuelAdvancePaymentController::class);
     Route::get('fuelAdvancePayments/daily-basis/{daily_basis_id}', [FuelAdvancePaymentController::class, "getFuelAdvancePaymentsByDailyBasis"]);
+
+    Route::apiResource('monthlyContracts', MonthlyContractController::class);
+    Route::get('fuelAdvancePayments/monthly-contract/{monthly_contract_id}', [FuelAdvancePaymentController::class, "getFuelAdvancePaymentsByDailyBasis"]);
 
 
 

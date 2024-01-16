@@ -26,17 +26,17 @@ class MonthlyContract extends Model
         'status',
         'fuel_type',
         'per_km_rate',
-        'body_rent_per_day',
-        'package_rent_per_day',
-        'package_km_limit_per_day',
+        'body_rent_per_month',
+        'package_rent_per_month',
+        'package_km_limit_per_month',
         'lunch_per_day',
         'dinner_per_day',
         'ot_per_hour',
         'tour_allowance_per_night',
         'vendor_per_km_rate',
-        'vendor_body_rent_per_day',
-        'vendor_package_rent_per_day',
-        'vendor_package_km_limit_per_day',
+        'vendor_body_rent_per_month',
+        'vendor_package_rent_per_month',
+        'vendor_package_km_limit_per_month',
         'vendor_lunch_per_day',
         'vendor_dinner_per_day',
         'vendor_ot_per_hour',
@@ -65,9 +65,9 @@ class MonthlyContract extends Model
             'status' => ['nullable', Rule::in(['Booking Created', 'On Duty', 'On Hold', 'To Make Invoice', "Invoice Created & Awaiting Payment", "Partially Paid", "Payment Overdue", "Paid & Closed"])],
             'fuel_type' => ['required', Rule::in(['Octane', 'Diesel', 'Petrol', 'LPG', 'CNG'])],
             'per_km_rate' => 'nullable|numeric|min:0',
-            'body_rent_per_day' => 'nullable|numeric|min:0',
-            'package_rent_per_day' => 'nullable|numeric|min:0',
-            'package_km_limit_per_day' => 'nullable|numeric|min:0',
+            'body_rent_per_month' => 'nullable|numeric|min:0',
+            'package_rent_per_month' => 'nullable|numeric|min:0',
+            'package_km_limit_per_month' => 'nullable|numeric|min:0',
             'lunch_per_day' => 'nullable|numeric|min:0',
             'dinner_per_day' => 'nullable|numeric|min:0',
             'ot_per_hour' => 'nullable|numeric|min:0',
@@ -78,9 +78,9 @@ class MonthlyContract extends Model
             'is_package' => 'boolean',
             'is_active' => 'boolean',
             'vendor_per_km_rate' => 'nullable|numeric|min:0',
-            'vendor_body_rent_per_day' => 'nullable|numeric|min:0',
-            'vendor_package_rent_per_day' => 'nullable|numeric|min:0',
-            'vendor_package_km_limit_per_day' => 'nullable|numeric|min:0',
+            'vendor_body_rent_per_month' => 'nullable|numeric|min:0',
+            'vendor_package_rent_per_month' => 'nullable|numeric|min:0',
+            'vendor_package_km_limit_per_month' => 'nullable|numeric|min:0',
             'vendor_lunch_per_day' => 'nullable|numeric|min:0',
             'vendor_dinner_per_day' => 'nullable|numeric|min:0',
             'vendor_ot_per_hour' => 'nullable|numeric|min:0',
@@ -111,7 +111,7 @@ class MonthlyContract extends Model
         $currentYearLastTwoDigits = date('y');
         $currentMonth = date('m');
 
-        return "DB-{$clientNameInitials}-{$currentMonth}{$currentYearLastTwoDigits}-{$bookingIdPrefix}";
+        return "MC-{$clientNameInitials}-{$currentMonth}{$currentYearLastTwoDigits}-{$bookingIdPrefix}";
 
     }
 
