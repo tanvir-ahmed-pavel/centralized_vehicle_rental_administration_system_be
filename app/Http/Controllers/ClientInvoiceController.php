@@ -6,6 +6,7 @@ use App\Models\ClientInvoice;
 use App\Http\Controllers\Controller;
 use App\Traits\DataMapping;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ class ClientInvoiceController extends Controller
     /**
      * Display a listing of the client invoices.
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function index(Request $request)
     {
@@ -34,10 +35,7 @@ class ClientInvoiceController extends Controller
         // Fetch client invoices based on the authenticated user's company and apply sorting
         $clientInvoices = $company->clientInvoices()
             ->with(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems'])
-            ->orderBy($sortBy, $sortOrder);
-
-        // Filter by dailyBasisId if provided in the query
-        if ($request->has('dailyBasisId')) {
+            ->orderBy($sortBy, $sortOrder)->when($request->has('dailyBasisId'), function ($query) use ($company, $request) {
             $dailyBasisId = $request->dailyBasisId;
 
             // Check if the provided dailyBasisId belongs to the company for ownership verification
@@ -47,17 +45,11 @@ class ClientInvoiceController extends Controller
                 return response()->json(['error' => 'DailyBasis not found or unauthorized'], 404);
             }
 
-            $clientInvoices->where('daily_basis_id', $dailyBasisId);
-        }
-
-        // Filter by status if the 'status' parameter is present in the request
-        if ($request->has('status')) {
+            return $query->where('daily_basis_id', $dailyBasisId);
+        })->when($request->has('status'), function ($query) use ($request) {
             $statuses = explode(',', $request->status);
-            $clientInvoices->whereIn('status', $statuses);
-        }
-
-        // Filter by client_id if the 'client_id' parameter is present in the request
-        if ($request->has('client_id')) {
+            return $query->whereIn('status', $statuses);
+        })->when($request->has('client_id'), function ($query) use ($company, $request) {
             $client_id = $request->client_id;
 
             // Check if the provided client_id belongs to the company for ownership verification
@@ -67,22 +59,21 @@ class ClientInvoiceController extends Controller
                 return response()->json(['error' => 'Client not found or unauthorized'], 404);
             }
 
-            $clientInvoices->where('client_id', $client_id);
-        }
-
-        $clientInvoices = $clientInvoices->paginate($perPage, ['*'], 'page', $page);
+            return $query->where('client_id', $client_id);
+        })->paginate($perPage, ['*'], 'page', $page);
 
         return response()->json([
             'message' => 'Client invoices retrieved successfully',
             'data' => $clientInvoices,
         ], 200);
+
     }
 
     /**
      * Store a newly created client invoice.
      *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @param Request $request
+     * @return JsonResponse
      */
     public function store(Request $request)
     {
@@ -155,7 +146,7 @@ class ClientInvoiceController extends Controller
      * Get the details of a specific client invoice.
      *
      * @param int $id
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function show($id)
     {
@@ -180,9 +171,9 @@ class ClientInvoiceController extends Controller
     /**
      * Update a client invoice record.
      *
-     * @param \Illuminate\Http\Request $request
+     * @param Request $request
      * @param int $id
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function update(Request $request, $id)
     {
@@ -231,7 +222,7 @@ class ClientInvoiceController extends Controller
                 $dailyBasis->save();
                 $clientInvoice->status = "Payment Overdue";
                 $clientInvoice->save();
-            } elseif($clientInvoice->total_paid == 0) {
+            } elseif ($clientInvoice->total_paid == 0) {
                 $dailyBasis = $clientInvoice->dailyBasis;
                 $dailyBasis->status = "Invoice Created & Awaiting Payment";
                 $dailyBasis->save();
@@ -251,7 +242,7 @@ class ClientInvoiceController extends Controller
      * Delete a client invoice record.
      *
      * @param int $id
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
 
     public function destroy($id)
