@@ -76,10 +76,7 @@ class AuthController extends Controller
         if (!Auth::attempt($credentials)) {
             $this->incrementAttempts($request);
 
-            return response()->json([
-                'status_code' => 401,
-                'message' => "The credentials doesn't match our records"
-            ], 401);
+            return response()->json(['error' => "The credentials doesn't match our records."], 401);
         }
         //auth attempt good
 

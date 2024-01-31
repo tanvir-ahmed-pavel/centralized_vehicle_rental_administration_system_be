@@ -31,48 +31,52 @@ class DriverInvoiceController extends Controller
         // Fetch driver invoices based on the authenticated user's company and apply sorting
         $driverInvoices = $company->driverInvoices()
             ->with(['vehicle:id,name,model_year,reg_no', 'driver:id,name,address,mobile_no', 'client:id,name,mobile_no', 'invoiceItems'])
-            ->orderBy($sortBy, $sortOrder);
+            ->orderBy($sortBy, $sortOrder)
+            ->when($request->has('dailyBasisId'), function ($query) use ($company, $request) {
+                $dailyBasisId = $request->dailyBasisId;
 
-        // Filter by dailyBasisId if provided in the query
-        if ($request->has('dailyBasisId')) {
-            $dailyBasisId = $request->dailyBasisId;
+                // Check if the provided dailyBasisId belongs to the company for ownership verification
+                $dailyBasis = $company->dailyBases()->find($dailyBasisId);
 
-            // Check if the provided dailyBasisId belongs to the company for ownership verification
-            $dailyBasis = $company->dailyBases()->find($dailyBasisId);
+                if (!$dailyBasis) {
+                    return response()->json(['error' => 'DailyBasis not found or unauthorized'], 404);
+                }
 
-            if (!$dailyBasis) {
-                return response()->json(['error' => 'DailyBasis not found or unauthorized'], 404);
-            }
+                return $query->where('daily_basis_id', $dailyBasisId);
+            })
+            ->when($request->has('monthlyContractId'), function ($query) use ($company, $request) {
+                $monthlyContractId = $request->monthlyContractId;
 
-            $driverInvoices->where('daily_basis_id', $dailyBasisId);
-        }
+                // Check if the provided dailyBasisId belongs to the company for ownership verification
+                $monthlyContract = $company->dailyBases()->find($monthlyContractId);
 
-        // Filter by status if the 'status' parameter is present in the request
-        if ($request->has('status')) {
-            $statuses = explode(',', $request->status);
-            $driverInvoices->whereIn('status', $statuses);
-        }
+                if (!$monthlyContract) {
+                    return response()->json(['error' => 'Monthly Contract not found or unauthorized'], 404);
+                }
 
-        // Filter by driver_id if the 'driver_id' parameter is present in the request
-        if ($request->has('driver_id')) {
-            $driver_id = $request->driver_id;
+                return $query->where('monthly_contract_id', $monthlyContract);
+            })
+            ->when($request->has('status'), function ($query) use ($request) {
+                $statuses = explode(',', $request->status);
 
-            // Check if the provided driver_id belongs to the company for ownership verification
-            $driver = $company->drivers()->find($driver_id);
+                return $query->whereIn('status', $statuses);
+            })
+            ->when($request->has('driver_id'), function ($query) use ($company, $request) {
+                $driver_id = $request->driver_id;
 
-            if (!$driver) {
-                return response()->json(['error' => 'Driver not found or unauthorized'], 404);
-            }
+                $driver = $company->drivers()->find($driver_id);
 
-            $driverInvoices->where('driver_id', $driver_id);
-        }
-
-        $driverInvoices = $driverInvoices->paginate($perPage, ['*'], 'page', $page);
+                return $driver
+                    ? $query->where('driver_id', $driver_id)
+                    : $query->where('id', 0); // No results if driver is unauthorized or not found
+            })
+            ->paginate($perPage, ['*'], 'page', $page);
 
         return response()->json([
             'message' => 'Driver invoices retrieved successfully',
             'data' => $driverInvoices,
         ], 200);
+
     }
 
     /**

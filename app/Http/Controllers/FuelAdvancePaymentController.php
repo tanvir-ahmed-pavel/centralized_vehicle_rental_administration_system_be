@@ -110,6 +110,59 @@ class FuelAdvancePaymentController extends Controller
     }
 
     /**
+     * Get fuel advance payments by Monthly Contract.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param int $dailyBasisId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getFuelAdvancePaymentsByMonthlyContract(Request $request)
+    {
+        // Set default values for pagination if not provided in the request
+        $page = $request->has('page') ? $request->page : 1;
+        $perPage = $request->has('per_page') ? $request->per_page : 10;
+
+        // Set default values for sorting if not provided in the request
+        $sortBy = $request->has('sort_by') ? $request->sort_by : 'id';
+        $sortOrder = $request->has('sort_order') ? $request->sort_order : 'desc';
+
+        $company = Auth::user()->company;
+
+        // Check if the DailyBasis belongs to the company
+        $monthlyContract = $company->monthlyContracts()->find($request->monthly_contract_id);
+
+        if (!$monthlyContract) {
+            return response()->json(['error' => 'Monthly Contract not found or unauthorized'], 404);
+        }
+
+        // Fetch fuel advance payments for the specified DailyBasis
+        $fuelAdvancePayments = $monthlyContract->fuelAdvancePayments()
+            ->with([
+                'dailyBasis:id,client_id,vehicle_id,driver_id',
+                'monthlyContract:id,client_id,vehicle_id,driver_id',
+            ])
+            ->orderBy($sortBy, $sortOrder)
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        // Calculate sum values
+        $fuelAdvanceTotal = $fuelAdvancePayments->sum('amount');
+        $totalPaidForFuel = $fuelAdvancePayments->where('payment_type', 'Fuel Payment')->sum('amount');
+        $clientFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Client')->sum('amount');
+        $vendorFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Vendor')->sum('amount');
+        $ownFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Self')->sum('amount');
+
+        return response()->json([
+            'message' => 'Fuel advance payments retrieved successfully for the DailyBasis',
+            'data' => $fuelAdvancePayments,
+            'fuelAdvanceTotal' => $fuelAdvanceTotal,
+            'totalPaidForFuel' => $totalPaidForFuel,
+            'clientFuelAdvanceTotal' => $clientFuelAdvanceTotal,
+            'vendorFuelAdvanceTotal' => $vendorFuelAdvanceTotal,
+            'ownFuelAdvanceTotal' => $ownFuelAdvanceTotal,
+        ], 200);
+    }
+
+    /**
      * Create a new fuel advance payment record.
      *
      * @param \Illuminate\Http\Request $request

@@ -28,51 +28,54 @@ class VendorInvoiceController extends Controller
         $sortBy = $request->has('sort_by') ? $request->sort_by : 'id';
         $sortOrder = $request->has('sort_order') ? $request->sort_order : 'desc';
 
-        // Fetch vendor invoices based on the authenticated user's company and apply sorting
         $vendorInvoices = $company->vendorInvoices()
             ->with(['vehicle:id,name,model_year,reg_no', 'vendor:id,name,address,mobile_no', 'client:id,name,mobile_no', 'invoiceItems'])
-            ->orderBy($sortBy, $sortOrder);
+            ->orderBy($sortBy, $sortOrder)
+            ->when($request->has('dailyBasisId'), function ($query) use ($company, $request) {
+                $dailyBasisId = $request->dailyBasisId;
 
-        // Filter by dailyBasisId if provided in the query
-        if ($request->has('dailyBasisId')) {
-            $dailyBasisId = $request->dailyBasisId;
+                // Check if the provided dailyBasisId belongs to the company for ownership verification
+                $dailyBasis = $company->dailyBases()->find($dailyBasisId);
 
-            // Check if the provided dailyBasisId belongs to the company for ownership verification
-            $dailyBasis = $company->dailyBases()->find($dailyBasisId);
+                if (!$dailyBasis) {
+                    return response()->json(['error' => 'DailyBasis not found or unauthorized'], 404);
+                }
 
-            if (!$dailyBasis) {
-                return response()->json(['error' => 'DailyBasis not found or unauthorized'], 404);
-            }
+                return $query->where('daily_basis_id', $dailyBasisId);
+            })
+            ->when($request->has('monthlyContractId'), function ($query) use ($company, $request) {
+                $monthlyContractId = $request->monthlyContractId;
 
-            $vendorInvoices->where('daily_basis_id', $dailyBasisId);
-        }
+                // Check if the provided dailyBasisId belongs to the company for ownership verification
+                $monthlyContract = $company->dailyBases()->find($monthlyContractId);
 
-        // Filter by status if the 'status' parameter is present in the request
-        if ($request->has('status')) {
-            $statuses = explode(',', $request->status);
-            $vendorInvoices->whereIn('status', $statuses);
-        }
+                if (!$monthlyContract) {
+                    return response()->json(['error' => 'Monthly Contract not found or unauthorized'], 404);
+                }
 
-        // Filter by vendor_id if the 'vendor_id' parameter is present in the request
-        if ($request->has('vendor_id')) {
-            $vendor_id = $request->vendor_id;
+                return $query->where('monthly_contract_id', $monthlyContract);
+            })
+            ->when($request->has('status'), function ($query) use ($request) {
+                $statuses = explode(',', $request->status);
 
-            // Check if the provided vendor_id belongs to the company for ownership verification
-            $vendor = $company->vendors()->find($vendor_id);
+                return $query->whereIn('status', $statuses);
+            })
+            ->when($request->has('vendor_id'), function ($query) use ($company, $request) {
+                $vendor_id = $request->vendor_id;
 
-            if (!$vendor) {
-                return response()->json(['error' => 'Vendor not found or unauthorized'], 404);
-            }
+                $vendor = $company->vendors()->find($vendor_id);
 
-            $vendorInvoices->where('vendor_id', $vendor_id);
-        }
-
-        $vendorInvoices = $vendorInvoices->paginate($perPage, ['*'], 'page', $page);
+                return $vendor
+                    ? $query->where('vendor_id', $vendor_id)
+                    : $query->where('id', 0); // This will ensure no results if vendor is unauthorized or not found
+            })
+            ->paginate($perPage, ['*'], 'page', $page);
 
         return response()->json([
             'message' => 'Vendor invoices retrieved successfully',
             'data' => $vendorInvoices,
         ], 200);
+
     }
 
     /**

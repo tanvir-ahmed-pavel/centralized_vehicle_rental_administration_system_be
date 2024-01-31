@@ -35,32 +35,48 @@ class ClientInvoiceController extends Controller
         // Fetch client invoices based on the authenticated user's company and apply sorting
         $clientInvoices = $company->clientInvoices()
             ->with(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems'])
-            ->orderBy($sortBy, $sortOrder)->when($request->has('dailyBasisId'), function ($query) use ($company, $request) {
-            $dailyBasisId = $request->dailyBasisId;
+            ->orderBy($sortBy, $sortOrder)
+            ->when($request->has('dailyBasisId'), function ($query) use ($company, $request) {
+                $dailyBasisId = $request->dailyBasisId;
 
-            // Check if the provided dailyBasisId belongs to the company for ownership verification
-            $dailyBasis = $company->dailyBases()->find($dailyBasisId);
+                // Check if the provided dailyBasisId belongs to the company for ownership verification
+                $dailyBasis = $company->dailyBases()->find($dailyBasisId);
 
-            if (!$dailyBasis) {
-                return response()->json(['error' => 'DailyBasis not found or unauthorized'], 404);
-            }
+                if (!$dailyBasis) {
+                    return response()->json(['error' => 'DailyBasis not found or unauthorized'], 404);
+                }
 
-            return $query->where('daily_basis_id', $dailyBasisId);
-        })->when($request->has('status'), function ($query) use ($request) {
-            $statuses = explode(',', $request->status);
-            return $query->whereIn('status', $statuses);
-        })->when($request->has('client_id'), function ($query) use ($company, $request) {
-            $client_id = $request->client_id;
+                return $query->where('daily_basis_id', $dailyBasisId);
+            })
+            ->when($request->has('monthlyContractId'), function ($query) use ($company, $request) {
+                $monthlyContractId = $request->monthlyContractId;
 
-            // Check if the provided client_id belongs to the company for ownership verification
-            $client = $company->clients()->find($client_id);
+                // Check if the provided dailyBasisId belongs to the company for ownership verification
+                $monthlyContract = $company->dailyBases()->find($monthlyContractId);
 
-            if (!$client) {
-                return response()->json(['error' => 'Client not found or unauthorized'], 404);
-            }
+                if (!$monthlyContract) {
+                    return response()->json(['error' => 'Monthly Contract not found or unauthorized'], 404);
+                }
 
-            return $query->where('client_id', $client_id);
-        })->paginate($perPage, ['*'], 'page', $page);
+                return $query->where('monthly_contract_id', $monthlyContract);
+            })
+            ->when($request->has('status'), function ($query) use ($request) {
+                $statuses = explode(',', $request->status);
+                return $query->whereIn('status', $statuses);
+            })
+            ->when($request->has('client_id'), function ($query) use ($company, $request) {
+                $client_id = $request->client_id;
+
+                // Check if the provided client_id belongs to the company for ownership verification
+                $client = $company->clients()->find($client_id);
+
+                if (!$client) {
+                    return response()->json(['error' => 'Client not found or unauthorized'], 404);
+                }
+
+                return $query->where('client_id', $client_id);
+            })
+            ->paginate($perPage, ['*'], 'page', $page);
 
         return response()->json([
             'message' => 'Client invoices retrieved successfully',
