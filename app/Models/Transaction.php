@@ -109,6 +109,16 @@ class Transaction extends Model
         return $this->belongsTo(VendorInvoice::class);
     }
 
+    public function dailyBasis()
+    {
+        return $this->belongsTo(DailyBasis::class);
+    }
+
+    public function monthlyContract()
+    {
+        return $this->belongsTo(MonthlyContract::class);
+    }
+
     public function client()
     {
         return $this->belongsTo(Client::class);

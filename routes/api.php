@@ -10,7 +10,9 @@ use App\Http\Controllers\DriverInvoiceController;
 use App\Http\Controllers\DriverPaymentController;
 use App\Http\Controllers\FuelAdvancePaymentController;
 use App\Http\Controllers\MonthlyContractController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ResourceController;
+use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\VendorInvoiceController;
@@ -75,4 +77,15 @@ Route::middleware('auth:api')->group(function () {
         Route::get("getVehicleList", [ResourceController::class, "getVehicleList"])->name("vehicleList");
         Route::get("getVendorList", [ResourceController::class, "getVendorList"])->name("vendorList");
     });
+
+    Route::name('reports.')->prefix('reports')->group(function() {
+        Route::get("invoiceStatistics", [ReportController::class, "getInvoiceStatistics"])->name("invoiceStatistics");
+        Route::get("getAllInvoice", [ReportController::class, "getInvoice"])->name("allInvoice");
+        Route::get("getClientList", [ResourceController::class, "getClientList"])->name("clientList");
+        Route::get("getVehicleList", [ResourceController::class, "getVehicleList"])->name("vehicleList");
+        Route::get("getVendorList", [ResourceController::class, "getVendorList"])->name("vendorList");
+    });
+
+    Route::get('transactions', [TransactionController::class, "index"])->name("transactions.get");
+    Route::get('transactions/statistics', [TransactionController::class, "transactionStatistics"])->name("transactions.statistics");
 });

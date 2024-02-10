@@ -60,6 +60,9 @@ class VendorInvoiceController extends Controller
 
                 return $query->whereIn('status', $statuses);
             })
+            ->when($request->has('start_date') && $request->has('end_date'), function ($query) use ($request) {
+                return $query->whereBetween('invoice_date', [$request->start_date, $request->end_date]);
+            })
             ->when($request->has('vendor_id'), function ($query) use ($company, $request) {
                 $vendor_id = $request->vendor_id;
 

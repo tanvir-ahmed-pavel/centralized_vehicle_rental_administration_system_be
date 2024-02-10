@@ -198,6 +198,11 @@ class ClientInvoice extends Model
         return $this->belongsTo(Vehicle::class);
     }
 
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
+    }
+
     public function driver()
     {
         return $this->belongsTo(Driver::class);
