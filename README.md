@@ -26,8 +26,11 @@ Generate a new application key
 
     php artisan key:generate
 
+Composer Reset (**If you choose this skip the rest commands**)
 
-Run the database migrations (**Set the database connection in .env before migrating**)
+    composer reset
+
+If didn't use composer reset you may continue from here. Run the database migrations (**Set the database connection in .env before migrating**)
 
     php artisan migrate
     
