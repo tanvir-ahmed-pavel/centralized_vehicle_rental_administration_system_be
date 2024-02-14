@@ -47,9 +47,10 @@ class Company extends Model
     {
         return [
             'user_id' => 'nullable|exists:users,id',
+            'current_password' => 'required|string|max:255',
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
-            'website' => 'nullable|string|max:50',
+            'website' => 'nullable|string|max:255',
             'mobile_no' => 'nullable|string|max:50',
             'tel_no' => 'nullable|string|max:50',
             'trade_license_no' => 'nullable|string|max:255',

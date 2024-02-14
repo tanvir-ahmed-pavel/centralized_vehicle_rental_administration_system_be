@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ClientInvoiceController;
 use App\Http\Controllers\ClientPaymentController;
+use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\DailyBasisController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\DriverInvoiceController;
@@ -41,6 +42,8 @@ Route::post('/verify_token', [AuthController::class, 'verify_auth'])->middleware
 //Guarded Route
 
 Route::middleware('auth:api')->group(function () {
+    Route::apiResource('companies', CompanyController::class);
+
     Route::apiResource('clients', ClientController::class);
     Route::apiResource('clientInvoices', ClientInvoiceController::class);
     Route::resource('clientInvoicePayments', ClientPaymentController::class);

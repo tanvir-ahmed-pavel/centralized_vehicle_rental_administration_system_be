@@ -4,7 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Http\Controllers\Controller;
+use http\Client\Curl\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use function PHPUnit\Framework\isEmpty;
 
 class CompanyController extends Controller
 {
@@ -42,8 +47,17 @@ class CompanyController extends Controller
      */
     public function show($id)
     {
-        $company = Company::findOrFail($id);
-        return response()->json(['data' => $company]);
+        $company = Auth::user()->company->with(["user"])->get()->first();
+
+
+        if (!$company) {
+            return response()->json(['error' => 'Company not found or unauthorized'], 404);
+        }
+
+        return response()->json([
+            'message' => 'Company retrieved successfully',
+            'data' => $company
+        ],200);
     }
 
     /**
@@ -59,9 +73,28 @@ class CompanyController extends Controller
 
         $validatedData = $request->validate(Company::validationRules());
 
-        $company->update($validatedData);
+        $password = $request->current_password;
+        if (Hash::check($password, auth()->user()->password)) {
+            $company->update($validatedData);
 
-        return response()->json(['message' => 'Company record updated successfully', 'data' => $company], 200);
+            if($request->has("new_password") && isEmpty($request->new_password)){
+                $validator = Validator::make(['new_password' => $request->new_password], [
+                    'new_password' => 'required|string|min:8|confirmed',
+                ]);
+                if ($validator->passes()){
+                    \App\Models\User::findOrFail(Auth::user()->id)->update([
+                        'password' => Hash::make($request->password),
+                    ]);
+                }
+            }
+
+            return response()->json(['message' => 'Setting updated successfully', 'data' => $company], 200);
+
+        }
+
+        return response()->json(['error' => "The password doesn't match with our records"], 422);
+
+
     }
 
     /**
