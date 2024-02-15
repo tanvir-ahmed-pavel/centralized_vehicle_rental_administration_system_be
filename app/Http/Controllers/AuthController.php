@@ -37,13 +37,7 @@ class AuthController extends Controller
                 $user->company()->associate($company); // Assign the company to the user
                 $user->save();
             }
-            $company = Company::create([
-                'user_id' => $user->id,
-                'name' => $request->company_name, // Use the company name from the request
-            ]);
 
-            $user->company()->associate($company); // Assign the company to the user
-            $user->save();
 
             $token = $user->createToken('AccessToken')->accessToken;
 

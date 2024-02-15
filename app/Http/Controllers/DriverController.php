@@ -37,6 +37,8 @@ class DriverController extends Controller
                 'license_number' => $driver->license_number,
                 'is_available' => $driver->is_available,
                 'vendor_id' => $driver->vendeor_id,
+                'driver_type' => $driver->driver_type,
+                'current_balance' => $driver->current_balance,
                 'vendor' => [
                     'id' => optional($driver->vendor)->id,
                     'name' => optional($driver->vendor)->name,

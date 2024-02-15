@@ -47,7 +47,7 @@ class CompanyController extends Controller
      */
     public function show($id)
     {
-        $company = Auth::user()->company->with(["user"])->get()->first();
+        $company = Auth::user()->company->load(["user"]);
 
 
         if (!$company) {
