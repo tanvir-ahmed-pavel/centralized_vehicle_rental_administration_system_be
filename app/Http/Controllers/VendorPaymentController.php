@@ -121,10 +121,25 @@ class VendorPaymentController extends Controller
         }
 
         // Fetch payments under the specified invoice
-        $payments = $vendor->payments()
-            ->with(['vendorInvoice:id,vendor_id,invoice_number'])
-            ->orderBy($sortBy, $sortOrder)
-            ->paginate($perPage, ['*'], 'page', $page);
+
+
+        $vendorInvoicePayments = $vendor->payments()
+            ->select('id', 'company_id', 'vendor_invoice_id', 'daily_basis_id', 'monthly_contract_id',
+                'vendor_id', 'date', 'amount', 'payment_method',
+                'payment_ref', 'payment_number', 'remarks', "created_at")
+            ->orderBy($sortBy, $sortOrder);
+
+        $fuelAdvancePayments = $vendor->fuelAdvancePayments()
+            ->select('id', 'company_id', DB::raw('null as vendor_invoice_id'), 'daily_basis_id', 'monthly_contract_id',
+                'vendor_id', 'posting_date as date', 'amount', 'payment_method',
+                'payment_ref', 'payment_number', 'remarks', "created_at")
+            ->orderBy($sortBy, $sortOrder);
+
+        // Combine both queries using union
+        $payments = $vendorInvoicePayments->unionAll($fuelAdvancePayments)
+            ->with(['vendorInvoice:id,vendor_id,invoice_number', 'dailyBasis:id,daily_basis_number'])
+            ->orderBy($sortBy, $sortOrder)->paginate($perPage, ['*'], 'page', $page);
+
 
         return response()->json([
             'message' => 'Payments for the specified vendor retrieved successfully',

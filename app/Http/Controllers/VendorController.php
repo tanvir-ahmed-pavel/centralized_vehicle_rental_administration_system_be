@@ -47,6 +47,7 @@ class VendorController extends Controller
         ], 200);
     }
 
+
     /**
      * Store a newly created resource in storage.
      */
@@ -87,8 +88,34 @@ class VendorController extends Controller
      */
     public function show($id)
     {
-        $vendor = Vendor::findOrFail($id);
-        return response()->json(['data' => $vendor], 200);
+        $company = Auth::user()->company;
+
+        // Check if the client belongs to the company
+        $vendor = $company->vendor()->find($id);
+
+        if (!$vendor) {
+            // Vendor not found
+            return response()->json(['error' => 'Vendor not found or unauthorized'], 404);
+        }
+
+        // Sum all the invoice amounts for the client
+        $lifetimeBilled = $vendor->invoices()->sum('grand_total');
+
+        // Sum all the payments made by the client
+        $lifetimePaid = $vendor->payments()->sum('amount');
+        $lifetimePaid += $vendor->fuelAdvancePayments()->sum('amount');
+
+
+        // Add the lifetime billed and lifetime paid to the client data
+        $vendor->lifetime_billed = $lifetimeBilled;
+        $vendor->lifetime_paid = $lifetimePaid;
+
+        $vendor->loadCount(["dailyBases", "invoices", "payments"]);
+
+        return response()->json([
+            'message' => 'Vendor retrieved successfully',
+            'data' => $vendor
+        ],200);
     }
 
     /**

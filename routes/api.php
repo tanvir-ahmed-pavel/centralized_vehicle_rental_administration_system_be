@@ -6,6 +6,7 @@ use App\Http\Controllers\ClientInvoiceController;
 use App\Http\Controllers\ClientPaymentController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\DailyBasisController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\DriverInvoiceController;
 use App\Http\Controllers\DriverPaymentController;
@@ -91,4 +92,6 @@ Route::middleware('auth:api')->group(function () {
 
     Route::get('transactions', [TransactionController::class, "index"])->name("transactions.get");
     Route::get('transactions/statistics', [TransactionController::class, "transactionStatistics"])->name("transactions.statistics");
+
+    Route::get('dashboard', [DashboardController::class, "index"])->name("dashboard.get");
 });

@@ -55,6 +55,32 @@ class DailyBasisController extends Controller
 
                 return $query->where('client_id', $client_id);
             })
+            ->when($request->has('vendor_id'), function ($query) use ($request) {
+                // Filter by vendor_id if the 'vendor_id' parameter is present in the request
+                $vendor_id = $request->vendor_id;
+
+                // Check if the provided vendor_id belongs to the company for ownership verification
+                $vendor = $query->first()->company->vendors()->find($vendor_id);
+
+                if (!$vendor) {
+                    return response()->json(['error' => 'Vendor not found or unauthorized'], 404);
+                }
+
+                return $query->where('vendor_id', $vendor_id);
+            })
+            ->when($request->has('driver_id'), function ($query) use ($request) {
+                // Filter by driver_id if the 'driver_id' parameter is present in the request
+                $driver_id = $request->driver_id;
+
+                // Check if the provided driver_id belongs to the company for ownership verification
+                $vendor = $query->first()->company->vendors()->find($driver_id);
+
+                if (!$vendor) {
+                    return response()->json(['error' => 'Vendor not found or unauthorized'], 404);
+                }
+
+                return $query->where('driver_id', $driver_id);
+            })
             ->orderBy($sortBy, $sortOrder)
             ->paginate($perPage, ['*'], 'page', $page);
 
