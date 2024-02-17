@@ -91,7 +91,7 @@ class VendorController extends Controller
         $company = Auth::user()->company;
 
         // Check if the client belongs to the company
-        $vendor = $company->vendor()->find($id);
+        $vendor = $company->vendors()->find($id);
 
         if (!$vendor) {
             // Vendor not found
