@@ -116,7 +116,7 @@ class VendorInvoiceController extends Controller
             }
 
             // Load relationships for the response
-            $vendorInvoice->load(['vehicle:id,name,model_year,reg_no', 'driver:id,name,address,mobile_no', 'client:id,name,mobile_no', 'vendor:id,name,mobile_no', 'invoiceItems']);
+            $vendorInvoice->load(['vehicle:id,name,model_year,reg_no', 'driver:id,name,address,mobile_no', 'client:id,name,mobile_no', 'vendor:id,name,mobile_no,current_balance', 'invoiceItems']);
 
             // Generate invoice number
             $vendorInvoice->invoice_number = $vendorInvoice->generateInvoiceNumber("Daily", $vendorInvoice->vendor->name, $vendorInvoice->id, $vendorInvoice->daily_basis_id);

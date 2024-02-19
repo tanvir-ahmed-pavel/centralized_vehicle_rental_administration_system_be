@@ -212,6 +212,17 @@ class FuelAdvancePaymentController extends Controller
                 $client->save();
             }
 
+            // Update driver or vendor
+            if ($request->has("vendor_id")){
+                $vendor = $fuelAdvancePayment->vendor;
+                $vendor->current_balance -= $fuelAdvancePayment->amount;
+                $vendor->save();
+            } elseif($request->has("driver_id")){
+                $driver = $fuelAdvancePayment->driver;
+                $driver->current_balance -= $fuelAdvancePayment->amount;
+                $driver->save();
+            }
+
             $fuelAdvancePayments = $dailyBasis->fuelAdvancePayments()->get();
             $fuelAdvanceTotal = $fuelAdvancePayments->sum('amount');
             $totalPaidForFuel = $fuelAdvancePayments->where('payment_type', 'Fuel Payment')->sum('amount');

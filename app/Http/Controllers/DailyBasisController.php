@@ -81,6 +81,9 @@ class DailyBasisController extends Controller
 
                 return $query->where('driver_id', $driver_id);
             })
+            ->when($request->has('start_date') && $request->has('end_date'), function ($query) use ($request) {
+                return $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
+            })
             ->orderBy($sortBy, $sortOrder)
             ->paginate($perPage, ['*'], 'page', $page);
 

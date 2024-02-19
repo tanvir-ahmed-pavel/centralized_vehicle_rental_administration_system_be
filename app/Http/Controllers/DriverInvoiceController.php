@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class DriverInvoiceController extends Controller
 {
@@ -114,7 +115,7 @@ class DriverInvoiceController extends Controller
             }
 
             // Load relationships for the response
-            $driverInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems']);
+            $driverInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no,current_balance', 'invoiceItems']);
 
             // Generate invoice number
             $driverInvoice->invoice_number = $driverInvoice->generateInvoiceNumber("Daily", $driverInvoice->driver->name, $driverInvoice->id, $driverInvoice->daily_basis_id);
@@ -126,8 +127,13 @@ class DriverInvoiceController extends Controller
 
             // Update driver balance by increasing the grand_total amount of the invoice
             $driver = $driverInvoice->driver;
+
+            Log::info('balance before', ['balance'=>$driver->current_balance]);
+
             $driver->current_balance += $driverInvoice->grand_total;
             $driver->save();
+
+
 
             // Update daily basis status
             $dueDate = $driverInvoice->due_date ? Carbon::parse($driverInvoice->due_date) : null;
