@@ -116,4 +116,9 @@ class Vendor extends Model
     {
         return $this->hasMany(Transaction::class);
     }
+
+    public function fuelAdvancePayments()
+    {
+        return $this->hasMany(FuelAdvancePayment::class);
+    }
 }

@@ -91,6 +91,11 @@ class Driver extends Model
         return $this->belongsTo(Vendor::class);
     }
 
+    public function fuelAdvancePayments()
+    {
+        return $this->hasMany(FuelAdvancePayment::class);
+    }
+
     public function dailyBases()
     {
         return $this->hasMany(DailyBasis::class);

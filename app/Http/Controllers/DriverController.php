@@ -101,8 +101,35 @@ class DriverController extends Controller
      */
     public function show($id)
     {
-        $driver = Driver::findOrFail($id);
-        return response()->json(['data' => $driver], 200);
+        $company = Auth::user()->company;
+
+        // Check if the client belongs to the company
+        $driver = $company->drivers()->find($id);
+
+        if (!$driver) {
+            // Driver not found
+            return response()->json(['error' => 'Driver not found or unauthorized'], 404);
+        }
+
+        // Sum all the invoice amounts for the client
+        $lifetimeBilled = $driver->invoices()->sum('grand_total');
+
+        // Sum all the payments made by the client
+        $lifetimePaid = $driver->payments()->sum('amount');
+        $lifetimePaid += $driver->fuelAdvancePayments()->sum('amount');
+
+
+        // Add the lifetime billed and lifetime paid to the client data
+        $driver->lifetime_billed = $lifetimeBilled;
+        $driver->lifetime_paid = $lifetimePaid;
+
+        $driver->loadCount(["dailyBases", "invoices", "payments"]);
+
+        return response()->json([
+            'message' => 'Driver retrieved successfully',
+            'data' => $driver
+        ],200);
+
     }
 
     /**
