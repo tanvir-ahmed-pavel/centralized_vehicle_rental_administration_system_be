@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ChartOfAccountController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ClientInvoiceController;
 use App\Http\Controllers\ClientPaymentController;
@@ -73,6 +74,7 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('monthlyContracts', MonthlyContractController::class);
     Route::get('fuelAdvancePayments/monthly-contract/{monthly_contract_id}', [FuelAdvancePaymentController::class, "getFuelAdvancePaymentsByDailyBasis"]);
 
+    Route::apiResource('chartOfAccounts', ChartOfAccountController::class);
 
 
     Route::name('resource.')->prefix('resource')->group(function() {

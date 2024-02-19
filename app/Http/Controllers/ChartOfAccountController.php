@@ -13,7 +13,68 @@ class ChartOfAccountController extends Controller
      */
     public function index()
     {
-        //
+        // Get all accounts with their balances
+        $accounts = ChartOfAccount::with(['children', 'transactions'])->get();
+
+
+        // Organize accounts into a tree structure
+        $tree = [];
+        $rootTree = [];
+        foreach ($accounts as $account) {
+            // Skip if the account has a parent
+            if ($account->parent_id !== null) {
+                continue;
+            }
+
+            // Build the tree recursively
+            $returnedTree = self::buildTree($account);
+            $tree[] = $returnedTree;
+
+            if (is_null($returnedTree['parent_id'])){
+                $rootTree[$returnedTree['name']] = $returnedTree['balance'];
+            }
+        }
+
+        return response()->json([
+            'message' => 'Accounts records retrieved successfully',
+            'data' => [
+                "tree" => $tree,
+                "root_tree" => $rootTree,
+                ],
+        ], 200);
+    }
+
+    protected static function buildTree($account)
+    {
+        $balance = 0;
+        if(
+            $account->type === "Liability"
+            || $account->type === "Equity"
+            || $account->type === "Income"
+        )
+        {
+            $balance = round($account->transactions->sum('credit') - $account->transactions->sum('debit'),2);
+        } else{
+            $balance = round($account->transactions->sum('debit') - $account->transactions->sum('credit'),2);
+
+        }
+
+
+        // Calculate balance including children recursively
+        foreach ($account->children as $child) {
+            $balance += self::buildTree($child)['balance'];
+        }
+
+        return [
+            'id' => $account->id,
+            'name' => $account->name,
+            'parent_name' => $account->type,
+            'parent_id' => $account->parent_id,
+            'balance' => $balance,
+            'children' => $account->children->map(function ($child) {
+                return self::buildTree($child);
+            }),
+        ];
     }
 
     /**
