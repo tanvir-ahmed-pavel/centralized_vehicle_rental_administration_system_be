@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\DailyBasis;
 use App\Models\FuelAdvancePayment;
+use App\Models\MonthlyContract;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class FuelAdvancePaymentController extends Controller
 {
@@ -87,7 +90,9 @@ class FuelAdvancePaymentController extends Controller
             ->with([
                 'dailyBasis:id,client_id,vehicle_id,driver_id',
                 'monthlyContract:id,client_id,vehicle_id,driver_id',
-            ])
+            ])->when($request->has('start_date') && $request->has('end_date'), function ($query) use ($request) {
+                return $query->whereBetween('posting_date', [$request->start_date, $request->end_date]);
+            })
             ->orderBy($sortBy, $sortOrder)
             ->paginate($perPage, ['*'], 'page', $page);
 
@@ -141,6 +146,20 @@ class FuelAdvancePaymentController extends Controller
                 'dailyBasis:id,client_id,vehicle_id,driver_id',
                 'monthlyContract:id,client_id,vehicle_id,driver_id',
             ])
+            ->when($request->has('for_the_month_of') && $request->filled('for_the_month_of'), function ($query) use ($request) {
+                if ($request->for_the_month_of === 'null' || $request->for_the_month_of === '') {
+                    return $query;
+                }
+
+                // Convert the month string to a Carbon instance
+                $carbonMonth = Carbon::parse($request->for_the_month_of);
+
+                // Filter records based on the month
+                return $query->whereMonth('for_the_month_of', $carbonMonth->month);
+            })
+            ->when($request->has('start_date') && $request->has('end_date'), function ($query) use ($request) {
+                return $query->whereBetween('for_the_month_of', [$request->start_date, $request->end_date]);
+            })
             ->orderBy($sortBy, $sortOrder)
             ->paginate($perPage, ['*'], 'page', $page);
 
@@ -171,76 +190,102 @@ class FuelAdvancePaymentController extends Controller
     public function store(Request $request)
     {
         return DB::transaction(function () use ($request) {
-            // Validate the request data
             $validatedData = $request->validate(FuelAdvancePayment::validationRules());
 
             $user = Auth::user();
 
-            if (!$user) {
-                return response()->json(['error' => 'User not found'], 404);
+            if (!$user || !($company = $user->company)) {
+                return response()->json(['error' => 'User or company not found'], 404);
             }
 
-            $company = $user->company;
+            $fuelAdvancePayment = $this->createFuelAdvancePayment($company, $validatedData, $request);
 
-            if (!$company) {
-                return response()->json(['error' => 'Company not found for the user'], 404);
+            if (!$fuelAdvancePayment) {
+                return response()->json(['error' => 'Fuel advance payment creation failed'], 500);
             }
 
-            // Check if the related daily basis has an invoice
-            $dailyBasis = DailyBasis::find($validatedData['daily_basis_id']);
+            return response()->json($this->buildResponseData($fuelAdvancePayment), 200);
+        });
+    }
 
-            if (!$dailyBasis) {
-                return response()->json(['error' => 'Daily Basis not found for the payment'], 404);
+    private function createFuelAdvancePayment($company, $validatedData, $request)
+    {
+        $dailyBasisId = $request->input('daily_basis_id');
+        $monthlyContractId = $request->input('monthly_contract_id');
+        $fuelAdvancePayment = null;
+
+        if ($dailyBasisId || $monthlyContractId) {
+            $dailyBasis = $dailyBasisId ? DailyBasis::find($dailyBasisId) : null;
+            $monthlyContract = $monthlyContractId ? MonthlyContract::find($monthlyContractId) : null;
+            $invoiceExists = $dailyBasis ? $dailyBasis->clientInvoices()->exists() : $monthlyContract->clientInvoices()->exists();
+            $paymentType = $dailyBasis ? 'Daily' : 'Monthly';
+
+            if (!$dailyBasis && !$monthlyContract) {
+                return null;
             }
 
-            // Check if there are any associated invoices
-            if ($dailyBasis->clientInvoices()->exists()) {
+            if ($invoiceExists && $dailyBasis) {
                 return response()->json(['error' => 'Cannot create fuel advance payment, the daily basis already has invoices'], 422);
             }
 
-            // Create the fuel advance payment record
             $fuelAdvancePayment = $company->fuelAdvancePayments()->create($validatedData);
-
-            $fuelAdvancePayment->payment_number = $fuelAdvancePayment->generatePaymentNumber("Daily", $fuelAdvancePayment->id, $fuelAdvancePayment->payment_type, $fuelAdvancePayment->payment_from);
+            $fuelAdvancePayment->payment_number = $fuelAdvancePayment->generatePaymentNumber($paymentType, $fuelAdvancePayment->id, $fuelAdvancePayment->payment_type, $fuelAdvancePayment->payment_from);
             $fuelAdvancePayment->save();
             $fuelAdvancePayment->generateTransactions();
 
             // Update client balance
-            if ($validatedData["payment_from"] == "Client"){
+            if ($validatedData['payment_from'] == 'Client') {
                 $client = $fuelAdvancePayment->client;
                 $client->current_balance -= $fuelAdvancePayment->amount;
                 $client->save();
             }
 
-            // Update driver or vendor
-            if ($request->has("vendor_id")){
+
+            if ($request->filled("vendor_id")){
                 $vendor = $fuelAdvancePayment->vendor;
+                Log::info('balance before', ['vendor'=>$vendor->current_balance]);
+
                 $vendor->current_balance -= $fuelAdvancePayment->amount;
                 $vendor->save();
-            } elseif($request->has("driver_id")){
+                Log::info('balance after', ['driver'=>$vendor->current_balance]);
+
+            } elseif($request->filled("driver_id")){
+
                 $driver = $fuelAdvancePayment->driver;
+                Log::info('balance before', ['driver'=>$driver->current_balance]);
+
                 $driver->current_balance -= $fuelAdvancePayment->amount;
                 $driver->save();
+                Log::info('balance after', ['driver'=>$driver->current_balance]);
+
             }
 
-            $fuelAdvancePayments = $dailyBasis->fuelAdvancePayments()->get();
-            $fuelAdvanceTotal = $fuelAdvancePayments->sum('amount');
-            $totalPaidForFuel = $fuelAdvancePayments->where('payment_type', 'Fuel Payment')->sum('amount');
-            $clientFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Client')->sum('amount');
-            $vendorFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Vendor')->sum('amount');
-            $ownFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Self')->sum('amount');
 
-            return response()->json([
-                'message' => 'Fuel advance payments retrieved successfully for the DailyBasis',
-                'data' => $fuelAdvancePayment,
-                'fuelAdvanceTotal' => $fuelAdvanceTotal,
-                'totalPaidForFuel' => $totalPaidForFuel,
-                'clientFuelAdvanceTotal' => $clientFuelAdvanceTotal,
-                'vendorFuelAdvanceTotal' => $vendorFuelAdvanceTotal,
-                'ownFuelAdvanceTotal' => $ownFuelAdvanceTotal,
-            ], 200);
-        });
+        }
+
+        return $fuelAdvancePayment;
     }
+
+    private function buildResponseData($fuelAdvancePayment)
+    {
+        $fuelAdvancePayments = $fuelAdvancePayment->dailyBasis ? $fuelAdvancePayment->dailyBasis->fuelAdvancePayments()->get() : $fuelAdvancePayment->monthlyContract->fuelAdvancePayments()->get();
+        $fuelAdvanceTotal = $fuelAdvancePayments->sum('amount');
+        $totalPaidForFuel = $fuelAdvancePayments->where('payment_type', 'Fuel Payment')->sum('amount');
+        $clientFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Client')->sum('amount');
+        $vendorFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Vendor')->sum('amount');
+        $ownFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Self')->sum('amount');
+
+        return [
+            'message' => 'Fuel advance payments retrieved successfully for the DailyBasis',
+            'data' => $fuelAdvancePayment,
+            'fuelAdvanceTotal' => $fuelAdvanceTotal,
+            'totalPaidForFuel' => $totalPaidForFuel,
+            'clientFuelAdvanceTotal' => $clientFuelAdvanceTotal,
+            'vendorFuelAdvanceTotal' => $vendorFuelAdvanceTotal,
+            'ownFuelAdvanceTotal' => $ownFuelAdvanceTotal,
+        ];
+    }
+
 
     /**
      * Get the details of a specific fuel advance payment record.
@@ -327,7 +372,7 @@ class FuelAdvancePaymentController extends Controller
 
 
             // Check if there are any associated invoices
-            if ($fuelAdvancePayment->dailyBasis->clientInvoices()->exists()) {
+            if ($fuelAdvancePayment->dailyBasis()->exists() && $fuelAdvancePayment->dailyBasis->clientInvoices()->exists()) {
                 return response()->json(['error' => 'Cannot delete fuel advance payment, it has associated invoices'], 422);
             }
 
@@ -340,10 +385,11 @@ class FuelAdvancePaymentController extends Controller
                 }
             }
 
-
             $fuelAdvancePayment->delete();
 
-            $fuelAdvancePayments = $fuelAdvancePayment->dailyBasis->fuelAdvancePayments()->get();
+
+
+            $fuelAdvancePayments = $fuelAdvancePayment->dailyBasis()->exists() ? $fuelAdvancePayment->dailyBasis->fuelAdvancePayments()->get(): $fuelAdvancePayment->monthlyContract->fuelAdvancePayments()->get();
             $fuelAdvanceTotal = $fuelAdvancePayments->sum('amount');
             $totalPaidForFuel = $fuelAdvancePayments->where('payment_type', 'Fuel Payment')->sum('amount');
             $clientFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Client')->sum('amount');

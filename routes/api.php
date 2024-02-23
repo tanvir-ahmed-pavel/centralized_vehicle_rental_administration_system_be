@@ -72,7 +72,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('fuelAdvancePayments/daily-basis/{daily_basis_id}', [FuelAdvancePaymentController::class, "getFuelAdvancePaymentsByDailyBasis"]);
 
     Route::apiResource('monthlyContracts', MonthlyContractController::class);
-    Route::get('fuelAdvancePayments/monthly-contract/{monthly_contract_id}', [FuelAdvancePaymentController::class, "getFuelAdvancePaymentsByDailyBasis"]);
+    Route::get('fuelAdvancePayments/monthly-contract/{monthly_contract_id}', [FuelAdvancePaymentController::class, "getFuelAdvancePaymentsByMonthlyContract"]);
 
     Route::apiResource('chartOfAccounts', ChartOfAccountController::class);
 

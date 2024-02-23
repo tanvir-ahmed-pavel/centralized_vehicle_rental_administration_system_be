@@ -48,8 +48,8 @@ class ClientInvoiceController extends Controller
 
                 return $query->where('daily_basis_id', $dailyBasisId);
             })
-            ->when($request->has('monthlyContractId'), function ($query) use ($company, $request) {
-                $monthlyContractId = $request->monthlyContractId;
+            ->when($request->has('monthly_contract_id'), function ($query) use ($company, $request) {
+                $monthlyContractId = $request->monthly_contract_id;
 
                 // Check if the provided dailyBasisId belongs to the company for ownership verification
                 $monthlyContract = $company->dailyBases()->find($monthlyContractId);

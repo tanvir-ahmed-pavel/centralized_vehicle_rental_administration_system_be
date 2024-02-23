@@ -50,7 +50,7 @@ class FuelAdvancePayment extends Model
         $chartOfAccountReceivable = ChartOfAccount::where('code', '1200')->first(); // Assuming '1200' is the code for Accounts Receivable
 
         $chartOfAccountFuelExpense = ChartOfAccount::where('name', 'Fuel Expense')->first();
-        $chartOfAccountClientAdvance = ChartOfAccount::where('name', 'Fuel Expense')->first();
+        $chartOfAccountClientAdvance = ChartOfAccount::where('name', 'Client Advance')->first();
 
         if (!$assetAccount || !$chartOfAccountReceivable || !$chartOfAccountFuelExpense || !$chartOfAccountClientAdvance) {
             // Handle the case where one or both chart of accounts are not found

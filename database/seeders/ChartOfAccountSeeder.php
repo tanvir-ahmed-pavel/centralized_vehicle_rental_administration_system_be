@@ -41,7 +41,6 @@ class ChartOfAccountSeeder extends Seeder
 
         // Accounts under Income
         ChartOfAccount::create(['code' => '4100', 'name' => 'Sales', 'short_name' => 'Sales', 'type' => 'Income', 'parent_id' => $incomeGroup->id]);
-        ChartOfAccount::create(['code' => '4200', 'name' => 'Client Advance', 'short_name' => 'Client Advance', 'type' => 'Income', 'parent_id' => $incomeGroup->id]);
         ChartOfAccount::create(['code' => '4300', 'name' => 'Daily Basis Income', 'short_name' => 'DB Income', 'type' => 'Income', 'parent_id' => $incomeGroup->id]);
         ChartOfAccount::create(['code' => '4400', 'name' => 'Monthly Basis Income', 'short_name' => 'MB Income', 'type' => 'Income', 'parent_id' => $incomeGroup->id]);
 

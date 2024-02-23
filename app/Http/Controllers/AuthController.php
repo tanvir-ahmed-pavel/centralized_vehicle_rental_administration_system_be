@@ -43,7 +43,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'message' => 'User and Company created successfully',
-                "user" => $user,
+                "user" => $user->load("company"),
                 'token' => $token
             ], 201);
         });
@@ -80,7 +80,7 @@ class AuthController extends Controller
         $token = $user->createToken('AccessToken')->accessToken;
 
         return response()->json([
-            "user"  => $user->with("company")->first(),
+            "user"  => $user->load(["company"]),
             'token' => $token
         ], 200);
     }
@@ -98,7 +98,7 @@ class AuthController extends Controller
         $user = Auth::user();
 
         return response()->json([
-            "user"  => $user->with("company")->first(),
+            "user"  => $user->load("company"),
             "token"  => $request->bearerToken(),
         ], 200);
     }
