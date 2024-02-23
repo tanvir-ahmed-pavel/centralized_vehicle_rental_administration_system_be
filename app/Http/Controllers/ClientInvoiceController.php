@@ -89,6 +89,33 @@ class ClientInvoiceController extends Controller
     }
 
     /**
+     * Get the details of a specific client invoice.
+     *
+     * @param int $id
+     * @return JsonResponse
+     */
+
+    public function show($id)
+    {
+        $clientInvoice = ClientInvoice::findOrFail($id);
+
+        // Check if the clientInvoice belongs to the logged-in user's company
+        $user = Auth::user();
+        if (!$user->company || $clientInvoice->company_id !== $user->company->id) {
+            return response()->json(['error' => 'ClientInvoice not found or unauthorized'], 404);
+        }
+
+        // Load relationships for the response
+        $clientInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,city,country,email,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems'])
+            ->loadCount("payments");
+
+        return response()->json([
+            'message' => 'Client invoice retrieved successfully',
+            'data' => $clientInvoice,
+        ], 200);
+    }
+
+    /**
      * Store a newly created client invoice.
      *
      * @param Request $request
@@ -99,6 +126,7 @@ class ClientInvoiceController extends Controller
         return DB::transaction(function () use ($request) {
             // Validate the request data
             $validatedData = $request->validate(ClientInvoice::validationRules());
+            $isDailyBasis = $request->filled("daily_basis_id");
 
             $user = Auth::user();
 
@@ -126,32 +154,26 @@ class ClientInvoiceController extends Controller
             $clientInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no,current_balance', 'driver:id,name,mobile_no', 'invoiceItems']);
 
             // Generate invoice number
-            $clientInvoice->invoice_number = $clientInvoice->generateInvoiceNumber("Daily", $clientInvoice->client->name, $clientInvoice->id, $clientInvoice->daily_basis_id);
+            $invoiceType = $isDailyBasis ? "Daily" : "Monthly";
+            $bookingId = $isDailyBasis ? $clientInvoice->daily_basis_id : $clientInvoice->monthly_contract_id;
+            $clientInvoice->invoice_number = $clientInvoice->generateInvoiceNumber($invoiceType, $clientInvoice->client->name, $clientInvoice->id, $bookingId);
             $clientInvoice->save();
 
-//            Generate Chart of accounts transaction
+            // Generate Chart of accounts transaction
             $clientInvoice->generateTransactions();
-
 
             // Update client balance by increasing the grand_total amount of the invoice
             $client = $clientInvoice->client;
             $client->current_balance += $clientInvoice->grand_total;
             $client->save();
 
-            // Update daily basis status
-            $dueDate = $clientInvoice->due_date ? Carbon::parse($clientInvoice->due_date) : null;
-            $currentDate = Carbon::now();
-
-            if ($dueDate && $currentDate->gt($dueDate)) {
-                $dailyBasis = $clientInvoice->dailyBasis;
-                $dailyBasis->status = "Payment Overdue";
-                $clientInvoice->status = "Payment Overdue";
-                $clientInvoice->save();
-                $dailyBasis->save();
-            } else {
-                $dailyBasis = $clientInvoice->dailyBasis;
-                $dailyBasis->status = "Invoice Created & Awaiting Payment";
-                $dailyBasis->save();
+            // Update daily basis or monthly contract status
+            $booking = $isDailyBasis ? $clientInvoice->dailyBasis : $clientInvoice->monthlyContract;
+            if ($booking) {
+                $dueDate = $clientInvoice->due_date ? Carbon::parse($clientInvoice->due_date) : null;
+                $currentDate = Carbon::now();
+                $booking->status = $dueDate && $currentDate->gt($dueDate) ? "Payment Overdue" : "Invoice Created & Awaiting Payment";
+                $booking->save();
             }
 
             return response()->json([
@@ -159,32 +181,6 @@ class ClientInvoiceController extends Controller
                 'data' => $clientInvoice,
             ], 201);
         });
-    }
-
-    /**
-     * Get the details of a specific client invoice.
-     *
-     * @param int $id
-     * @return JsonResponse
-     */
-    public function show($id)
-    {
-        $clientInvoice = ClientInvoice::findOrFail($id);
-
-        // Check if the clientInvoice belongs to the logged-in user's company
-        $user = Auth::user();
-        if (!$user->company || $clientInvoice->company_id !== $user->company->id) {
-            return response()->json(['error' => 'ClientInvoice not found or unauthorized'], 404);
-        }
-
-        // Load relationships for the response
-        $clientInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,city,country,email,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems'])
-            ->loadCount("payments");
-
-        return response()->json([
-            'message' => 'Client invoice retrieved successfully',
-            'data' => $clientInvoice,
-        ], 200);
     }
 
     /**
@@ -197,7 +193,6 @@ class ClientInvoiceController extends Controller
     public function update(Request $request, $id)
     {
         return DB::transaction(function () use ($request, $id) {
-
             $clientInvoice = ClientInvoice::findOrFail($id);
 
             // Check if the clientPayment belongs to the logged-in user's company
@@ -209,7 +204,7 @@ class ClientInvoiceController extends Controller
             // Validate the request data
             $validatedData = $request->validate(ClientInvoice::validationRules());
 
-//            deduct old amount from client balance
+            // Deduct old amount from client balance
             $client = $clientInvoice->client;
             $client->current_balance -= $clientInvoice->grand_total;
 
@@ -231,24 +226,14 @@ class ClientInvoiceController extends Controller
             $client->current_balance += $clientInvoice->grand_total;
             $client->save();
 
-            // Update daily basis status
-            $dueDate = $clientInvoice->due_date ? Carbon::parse($clientInvoice->due_date) : null;
-            $currentDate = Carbon::now();
-
-            if ($dueDate && $currentDate->gt($dueDate)) {
-                $dailyBasis = $clientInvoice->dailyBasis;
-                $dailyBasis->status = "Payment Overdue";
-                $dailyBasis->save();
-                $clientInvoice->status = "Payment Overdue";
-                $clientInvoice->save();
-            } elseif ($clientInvoice->total_paid == 0) {
-                $dailyBasis = $clientInvoice->dailyBasis;
-                $dailyBasis->status = "Invoice Created & Awaiting Payment";
-                $dailyBasis->save();
-                $clientInvoice->status = "Created & Awaiting Payment";
-                $clientInvoice->save();
+            // Update daily basis or monthly contract status
+            $booking = $clientInvoice->dailyBasis ?? $clientInvoice->monthlyContract;
+            if ($booking) {
+                $dueDate = $clientInvoice->due_date ? Carbon::parse($clientInvoice->due_date) : null;
+                $currentDate = Carbon::now();
+                $booking->status = $dueDate && $currentDate->gt($dueDate) ? "Payment Overdue" : "Invoice Created & Awaiting Payment";
+                $booking->save();
             }
-
 
             return response()->json([
                 'message' => 'Client invoice updated successfully',
@@ -267,6 +252,7 @@ class ClientInvoiceController extends Controller
     public function destroy($id)
     {
         return DB::transaction(function () use ($id) {
+            // Find the client invoice or throw an exception if not found
             $clientInvoice = ClientInvoice::findOrFail($id);
 
             // Check if the clientInvoice belongs to the logged-in user's company
@@ -286,10 +272,15 @@ class ClientInvoiceController extends Controller
             $client->current_balance -= $clientInvoice->grand_total;
             $client->save();
 
-            // Update daily basis status
-            $dailyBasis = $clientInvoice->dailyBasis;
-            $dailyBasis->status = "To Make Invoice";
-            $dailyBasis->save();
+            // Update daily basis status if applicable
+            if ($clientInvoice->dailyBasis()->exists()) {
+                $clientInvoice->dailyBasis->update(['status' => 'To Make Invoice']);
+            }
+
+            // Update monthly contract status if applicable
+            if ($clientInvoice->monthlyContract()->exists()) {
+                $clientInvoice->monthlyContract->update(['status' => 'To Make Invoice']);
+            }
 
             // Perform the deletion
             $clientInvoice->delete();
@@ -297,4 +288,5 @@ class ClientInvoiceController extends Controller
             return response()->json(['message' => 'Client invoice deleted successfully'], 200);
         });
     }
+
 }

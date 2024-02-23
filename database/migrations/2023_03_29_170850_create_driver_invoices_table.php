@@ -23,7 +23,7 @@ return new class extends Migration
             $table->enum('status', array('Created & Awaiting Payment', 'Partially Paid', 'Paid', 'Payment Overdue'))->default('Created & Awaiting Payment');
 
             $table->string('invoice_number')->nullable();
-            $table->date('for_the_month')->nullable();
+            $table->date('for_the_month_of')->nullable();
             $table->date('invoice_date');
             $table->date('due_date')->nullable();
             $table->decimal('sub_total', 10, 2)->default(0);
