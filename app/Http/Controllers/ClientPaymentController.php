@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\ClientInvoice;
 use App\Models\ClientPayment;
 use App\Models\DailyBasis;
+use App\Models\MonthlyContract;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -150,6 +151,7 @@ class ClientPaymentController extends Controller
      * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\JsonResponse
      */
+
     public function store(Request $request)
     {
         return DB::transaction(function () use ($request) {
@@ -168,30 +170,35 @@ class ClientPaymentController extends Controller
                 return response()->json(['error' => 'Company not found for the user'], 404);
             }
 
+            // Determine if the payment is associated with a daily basis or monthly contract
+            $dailyBasisId = $request->input('daily_basis_id');
+            $monthlyContractId = $request->input('monthly_contract_id');
+            $invoice = ClientInvoice::findOrFail($request->client_invoice_id);
+
+
+            if(!$dailyBasisId && !$monthlyContractId){
+                return response()->json(['error' => 'Daily basis ID or monthly contract ID is required'], 422);
+            }
+
             // Create the client payment record
             $clientPayment = $company->clientInvoicePayments()->create($validatedData);
 
-            // Update total_paid  and status in ClientInvoice and dailybasis
-            $invoice = ClientInvoice::findOrFail($clientPayment->client_invoice_id);
-            $dailyBasis = DailyBasis::findOrFail($clientPayment->daily_basis_id);
+            // Update total_paid and status in ClientInvoice and daily basis
             $invoice->total_paid += $clientPayment->amount;
             $invoice->save();
 
+            // Adjust status based on payment amount and due date
             $dueDate = $invoice->due_date ? Carbon::parse($invoice->due_date) : null;
             $currentDate = Carbon::now();
+
             if ($invoice->total_paid >= $invoice->grand_total) {
                 $invoice->status = "Paid";
-                $dailyBasis->status = "Paid & Closed";
             } elseif ($dueDate && $currentDate->gt($dueDate) && $invoice->status != "Paid") {
                 $invoice->status = "Payment Overdue";
-                $dailyBasis->status = "Payment Overdue";
-            }
-            elseif ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
+            } elseif ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
                 $invoice->status = "Partially Paid";
-                $dailyBasis->status = "Partially Paid";
             }
 
-            $dailyBasis->save();
             $invoice->save();
 
             // Update client balance
@@ -199,18 +206,22 @@ class ClientPaymentController extends Controller
             $client->current_balance -= $clientPayment->amount;
             $client->save();
 
-
-            $clientPayment->load(['clientInvoice:id,client_id,total_paid,grand_total', 'clientInvoice.client:id,name']);
-            $clientPayment->payment_number = $clientPayment->generatePaymentNumber("Daily", $clientPayment->clientInvoice->client->name, $clientPayment->client_invoice_id, $clientPayment->id);
+            // Generate payment number and save the client payment record
+            $paymentType = $dailyBasisId ? "Daily" : "Monthly";
+            $clientPayment->payment_number = $clientPayment->generatePaymentNumber($paymentType, $client->name, $invoice->id, $clientPayment->id);
             $clientPayment->save();
             $clientPayment->generateTransactions();
 
+            $clientPayment->load(['clientInvoice:id,client_id,total_paid,grand_total', 'clientInvoice.client:id,name']);
+
+            // Return the response
             return response()->json([
                 'message' => 'Client payment record created successfully',
                 'data' => $clientPayment,
             ], 201);
         });
     }
+
 
     /**
      * Get the details of a specific client payment record.
@@ -245,20 +256,40 @@ class ClientPaymentController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $company = Auth::user()->company;
-        $clientPayment = $company->clientPayments()->findOrFail($id);
+        return DB::transaction(function () use ($request, $id) {
+            // Retrieve the company
+            $company = Auth::user()->company;
 
-        $validatedData = $request->validate(ClientPayment::validationRules());
+            // Find the client payment record
+            $clientPayment = $company->clientPayments()->findOrFail($id);
 
-        $clientPayment->update($validatedData);
+            // Validate the request data
+            $validatedData = $request->validate(ClientPayment::validationRules());
 
-        $clientPayment->load(['dailyBasis:id,client_id,vehicle_id,driver_id', 'clientInvoice:id,invoice_date,due_date,client_id,vehicle_id,driver_id']);
+            // Determine if the client payment is associated with a daily basis or monthly contract
+            $dailyBasisId = $clientPayment->daily_basis_id;
+            $monthlyContractId = $clientPayment->monthly_contract_id;
 
-        return response()->json([
-            'message' => 'Client payment record updated successfully',
-            'data' => $clientPayment,
-        ], 200);
+            // Update the client payment record
+            $clientPayment->update($validatedData);
+
+            // Load associated data (daily basis or monthly contract)
+            if ($dailyBasisId) {
+                $clientPayment->load(['dailyBasis:id,client_id,vehicle_id,driver_id']);
+            } elseif ($monthlyContractId) {
+                $clientPayment->load(['monthlyContract:id,client_id,vehicle_id,driver_id']);
+            }
+
+            // Load associated client invoice data
+            $clientPayment->load(['clientInvoice:id,invoice_date,due_date,client_id,vehicle_id,driver_id']);
+
+            return response()->json([
+                'message' => 'Client payment record updated successfully',
+                'data' => $clientPayment,
+            ], 200);
+        });
     }
+
 
     /**
      * Delete a client payment record.
@@ -269,35 +300,71 @@ class ClientPaymentController extends Controller
     public function destroy($id)
     {
         return DB::transaction(function () use ($id) {
+            // Find the client payment record
             $clientPayment = ClientPayment::findOrFail($id);
-
-            // Update total_paid  and status in ClientInvoice and dailybasis
             $invoice = ClientInvoice::findOrFail($clientPayment->client_invoice_id);
-            $dailyBasis = DailyBasis::findOrFail($clientPayment->daily_basis_id);
-            $invoice->total_paid -= $clientPayment->amount;
-            $invoice->save();
 
-            // Update client balance
-            $client = $invoice->client;
-            $client->current_balance += $clientPayment->amount;
-            $client->save();
 
-            if ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
-                $invoice->status = "Partially Paid";
-                $dailyBasis->status = "Partially Paid";
-            } elseif ($invoice->total_paid >= $invoice->grand_total) {
-                $invoice->status = "Paid";
-                $dailyBasis->status = "Paid & Closed";
-            } else {
-                $invoice->status = "Created & Awaiting Payment";
-                $dailyBasis->status = "Invoice Created & Awaiting Payment";
+            // Determine if the payment is associated with a daily basis or monthly contract
+            if ($clientPayment->daily_basis_id) {
+                // If associated with a daily basis, update total_paid and status in ClientInvoice and DailyBasis
+                $dailyBasis = DailyBasis::findOrFail($clientPayment->daily_basis_id);
+
+                // Update total_paid in ClientInvoice
+                $invoice->total_paid -= $clientPayment->amount;
+
+                // Update invoice status based on total paid
+                if ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
+                    $invoice->status = "Partially Paid";
+                    $dailyBasis->status = "Partially Paid";
+                } elseif ($invoice->total_paid >= $invoice->grand_total) {
+                    $invoice->status = "Paid";
+                    $dailyBasis->status = "Paid & Closed";
+                } else {
+                    $invoice->status = "Created & Awaiting Payment";
+                    $dailyBasis->status = "Invoice Created & Awaiting Payment";
+                }
+
+                // Update client balance
+                $client = $invoice->client;
+                $client->current_balance += $clientPayment->amount;
+
+                // Save changes
+                $invoice->save();
+                $dailyBasis->save();
+                $client->save();
+            } elseif ($clientPayment->monthly_contract_id) {
+                // If associated with a monthly contract, update total_paid and status in MonthlyContract
+                $monthlyContract = MonthlyContract::findOrFail($clientPayment->monthly_contract_id);
+
+                // Update total_paid in ClientInvoice
+                $invoice->total_paid -= $clientPayment->amount;
+
+
+                // Update contract status based on total paid
+                if ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
+                    $invoice->status = "Partially Paid";
+                } elseif ($invoice->total_paid >= $invoice->grand_total) {
+                    $invoice->status = "Paid";
+                } else {
+                    $invoice->status = "Created & Awaiting Payment";
+                }
+
+                // Update client balance
+                $client = $invoice->client;
+                $client->current_balance += $clientPayment->amount;
+
+                // Save changes
+                $monthlyContract->save();
+                $invoice->save();
+                $client->save();
             }
-            $dailyBasis->save();
-            $invoice->save();
 
+            // Delete the client payment record
             $clientPayment->delete();
 
             return response()->json(['message' => 'Client payment record deleted successfully'], 200);
         });
     }
+
 }
