@@ -48,17 +48,17 @@ class ClientInvoiceController extends Controller
 
                 return $query->where('daily_basis_id', $dailyBasisId);
             })
-            ->when($request->has('monthly_contract_id'), function ($query) use ($company, $request) {
-                $monthlyContractId = $request->monthly_contract_id;
+            ->when($request->has('monthlyContractId'), function ($query) use ($company, $request) {
+                $monthlyContractId = $request->monthlyContractId;
 
                 // Check if the provided dailyBasisId belongs to the company for ownership verification
-                $monthlyContract = $company->dailyBases()->find($monthlyContractId);
+                $monthlyContract = $company->monthlyContracts()->find($monthlyContractId);
 
                 if (!$monthlyContract) {
                     return response()->json(['error' => 'Monthly Contract not found or unauthorized'], 404);
                 }
 
-                return $query->where('monthly_contract_id', $monthlyContract);
+                return $query->where('monthly_contract_id', $monthlyContractId);
             })
             ->when($request->has('status'), function ($query) use ($request) {
                 $statuses = explode(',', $request->status);

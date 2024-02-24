@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class ClientPayment extends Model
 {
@@ -129,7 +130,7 @@ class ClientPayment extends Model
             'client_invoice_id' => 'nullable|exists:client_invoices,id',
             'date' => 'required|date',
             'amount' => 'required|numeric',
-            'payment_method' => 'required|in:Cash,Cheque,Bank Transfer,Mobile Banking (Bkash, Nagad, etc.),Card',
+            'payment_method' => ['required', Rule::in(['Cash', 'Cheque', 'Bank Transfer', 'Mobile Banking (Bkash, Nagad, etc.)', "Card"])],
             'payment_ref' => 'nullable|string',
             'payment_number' => 'nullable|string',
             'remarks' => 'nullable|string',

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class DriverPayment extends Model
 {
@@ -130,7 +131,7 @@ class DriverPayment extends Model
             'driver_invoice_id' => 'nullable|exists:driver_invoices,id',
             'date' => 'required|date',
             'amount' => 'required|numeric',
-            'payment_method' => 'required|in:Cash,Cheque,Bank Transfer,Mobile Banking (Bkash, Nagad, etc.),Card',
+            'payment_method' => ['required', Rule::in(['Cash', 'Cheque', 'Bank Transfer', 'Mobile Banking (Bkash, Nagad, etc.)', "Card"])],
             'payment_ref' => 'nullable|string',
             'payment_number' => 'nullable|string',
             'remarks' => 'nullable|string',
