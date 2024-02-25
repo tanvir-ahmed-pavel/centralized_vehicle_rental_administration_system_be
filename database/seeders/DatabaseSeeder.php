@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\MonthlyContract;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Client;
@@ -29,7 +30,8 @@ class DatabaseSeeder extends Seeder
         Vendor::factory(20)->create();
         Driver::factory(20)->create();
         Vehicle::factory(30)->create();
-        DailyBasis::factory(50)->create();
+        DailyBasis::factory(20)->create();
+        MonthlyContract::factory(5)->create();
 
         $this->call([
             ChartOfAccountSeeder::class,

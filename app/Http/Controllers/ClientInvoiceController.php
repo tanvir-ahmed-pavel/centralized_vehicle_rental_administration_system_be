@@ -220,7 +220,7 @@ class ClientInvoiceController extends Controller
             }
 
             // Load relationships for the response
-            $clientInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems']);
+            $clientInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no,current_balance', 'driver:id,name,mobile_no', 'invoiceItems']);
 
             // Update client balance by increasing the grand_total amount of the invoice
             $client->current_balance += $clientInvoice->grand_total;

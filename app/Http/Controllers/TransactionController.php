@@ -56,7 +56,7 @@ class TransactionController extends Controller
                     return response()->json(['error' => 'Monthly Contract not found or unauthorized'], 404);
                 }
 
-                return $query->where('monthly_contract_id', $monthlyContract);
+                return $query->where('monthly_contract_id', $monthlyContractId);
             })
             ->when($request->has('start_date') && $request->has('end_date'), function ($query) use ($request) {
                 return $query->whereBetween('transaction_date', [$request->start_date, $request->end_date]);

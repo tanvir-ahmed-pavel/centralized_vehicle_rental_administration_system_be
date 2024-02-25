@@ -53,7 +53,7 @@ class VendorInvoiceController extends Controller
                     return response()->json(['error' => 'Monthly Contract not found or unauthorized'], 404);
                 }
 
-                return $query->where('monthly_contract_id', $monthlyContract);
+                return $query->where('monthly_contract_id', $monthlyContractId);
             })
             ->when($request->has('status'), function ($query) use ($request) {
                 $statuses = explode(',', $request->status);
@@ -79,72 +79,6 @@ class VendorInvoiceController extends Controller
             'data' => $vendorInvoices,
         ], 200);
 
-    }
-
-    /**
-     * Store a newly created vendor invoice.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function store(Request $request)
-    {
-        return DB::transaction(function () use ($request) {
-            // Validate the request data
-            $validatedData = $request->validate(VendorInvoice::validationRules());
-
-            $user = Auth::user();
-
-            if (!$user) {
-                return response()->json(['error' => 'User not found'], 404);
-            }
-
-            $company = $user->company;
-
-            if (!$company) {
-                return response()->json(['error' => 'Company not found for the user'], 404);
-            }
-
-            // Create the vendor invoice record
-            $vendorInvoice = $company->vendorInvoices()->create($validatedData);
-
-            // Create invoice item records if provided in the request
-            if ($request->has('invoice_items') && is_array($request->invoice_items)) {
-                foreach ($request->invoice_items as $itemData) {
-                    $vendorInvoice->invoiceItems()->create($itemData);
-                }
-            }
-
-            // Load relationships for the response
-            $vendorInvoice->load(['vehicle:id,name,model_year,reg_no', 'driver:id,name,address,mobile_no', 'client:id,name,mobile_no', 'vendor:id,name,mobile_no,current_balance', 'invoiceItems']);
-
-            // Generate invoice number
-            $vendorInvoice->invoice_number = $vendorInvoice->generateInvoiceNumber("Daily", $vendorInvoice->vendor->name, $vendorInvoice->id, $vendorInvoice->daily_basis_id);
-            $vendorInvoice->save();
-
-//            Generate Chart of accounts transaction
-            $vendorInvoice->generateTransactions();
-
-
-            // Update vendor balance by increasing the grand_total amount of the invoice
-            $vendor = $vendorInvoice->vendor;
-            $vendor->current_balance += $vendorInvoice->grand_total;
-            $vendor->save();
-
-            // Update daily basis status
-            $dueDate = $vendorInvoice->due_date ? Carbon::parse($vendorInvoice->due_date) : null;
-            $currentDate = Carbon::now();
-
-            if ($dueDate && $currentDate->gt($dueDate)) {
-                $vendorInvoice->status = "Payment Overdue";
-                $vendorInvoice->save();
-            }
-
-            return response()->json([
-                'message' => 'Vendor invoice created successfully',
-                'data' => $vendorInvoice,
-            ], 201);
-        });
     }
 
     /**
@@ -174,6 +108,81 @@ class VendorInvoiceController extends Controller
     }
 
     /**
+     * Store a newly created vendor invoice.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function store(Request $request)
+    {
+        return DB::transaction(function () use ($request) {
+            // Validate the request data
+            $validatedData = $request->validate(VendorInvoice::validationRules());
+
+            $user = Auth::user();
+
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404);
+            }
+
+            $company = $user->company;
+
+            if (!$company) {
+                return response()->json(['error' => 'Company not found for the user'], 404);
+            }
+
+            // Determine if the invoice is associated with a daily basis or monthly contract
+            $dailyBasisId = $request->input('daily_basis_id');
+            $monthlyContractId = $request->input('monthly_contract_id');
+
+            if (!$dailyBasisId && !$monthlyContractId) {
+                return response()->json(['error' => 'Daily basis ID or monthly contract ID is required'], 422);
+            }
+
+            // Create the vendor invoice record
+            $vendorInvoice = $company->vendorInvoices()->create($validatedData);
+
+            // Create invoice item records if provided in the request
+            if ($request->has('invoice_items') && is_array($request->invoice_items)) {
+                foreach ($request->invoice_items as $itemData) {
+                    $vendorInvoice->invoiceItems()->create($itemData);
+                }
+            }
+
+            // Load relationships for the response
+            $vendorInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no,current_balance', 'vendor:id,name,mobile_no,current_balance', 'invoiceItems']);
+
+            // Generate invoice number
+            $invoiceType = $dailyBasisId ? "Daily" : "Monthly";
+            $bookingId = $dailyBasisId ? $vendorInvoice->daily_basis_id : $vendorInvoice->monthly_contract_id;
+            $vendorInvoice->invoice_number = $vendorInvoice->generateInvoiceNumber($invoiceType, $vendorInvoice->vendor->name, $vendorInvoice->id, $bookingId);
+            $vendorInvoice->save();
+
+            // Generate Chart of accounts transaction
+            $vendorInvoice->generateTransactions();
+
+            // Update vendor balance by increasing the grand_total amount of the invoice
+            $vendor = $vendorInvoice->vendor;
+            $vendor->current_balance += $vendorInvoice->grand_total;
+            $vendor->save();
+
+            // Update daily basis status
+            $booking = $dailyBasisId ? $vendorInvoice->dailyBasis : $vendorInvoice->monthlyContract;
+            if ($booking) {
+                $dueDate = $vendorInvoice->due_date ? Carbon::parse($vendorInvoice->due_date) : null;
+                $currentDate = Carbon::now();
+                $booking->status = $dueDate && $currentDate->gt($dueDate) ? "Payment Overdue" : "Invoice Created & Awaiting Payment";
+                $booking->save();
+            }
+
+            return response()->json([
+                'message' => 'Vendor invoice created successfully',
+                'data' => $vendorInvoice,
+            ], 201);
+        });
+    }
+
+    /**
      * Update a vendor invoice record.
      *
      * @param \Illuminate\Http\Request $request
@@ -186,7 +195,7 @@ class VendorInvoiceController extends Controller
 
             $vendorInvoice = VendorInvoice::findOrFail($id);
 
-            // Check if the vendorPayment belongs to the logged-in user's company
+            // Check if the vendor invoice belongs to the logged-in user's company
             $user = Auth::user();
             if (!$user->company || $vendorInvoice->company_id !== $user->company->id) {
                 return response()->json(['error' => 'Vendor invoice not found or unauthorized'], 404);
@@ -195,7 +204,7 @@ class VendorInvoiceController extends Controller
             // Validate the request data
             $validatedData = $request->validate(VendorInvoice::validationRules());
 
-//            deduct old amount from vendor balance
+            // Deduct old amount from vendor balance
             $vendor = $vendorInvoice->vendor;
             $vendor->current_balance -= $vendorInvoice->grand_total;
 
@@ -206,26 +215,25 @@ class VendorInvoiceController extends Controller
             $vendorInvoice->invoiceItems()->delete();
             if ($request->has('invoice_items') && is_array($request->invoice_items)) {
                 foreach ($request->invoice_items as $itemData) {
-                    $vendorInvoice->invoiceItems()->updateOrCreate(['id' => $itemData['id']], $itemData);
+                    $vendorInvoice->invoiceItems()->create($itemData);
                 }
             }
 
             // Load relationships for the response
-            $vendorInvoice->load(['vehicle:id,name,model_year,reg_no', 'driver:id,name,address,mobile_no', 'client:id,name,mobile_no', 'vendor:id,name,mobile_no', 'invoiceItems']);
+            $vendorInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'vendor:id,name,mobile_no,current_balance', 'invoiceItems']);
 
             // Update vendor balance by increasing the grand_total amount of the invoice
             $vendor->current_balance += $vendorInvoice->grand_total;
             $vendor->save();
 
             // Update daily basis status
-            $dueDate = $vendorInvoice->due_date ? Carbon::parse($vendorInvoice->due_date) : null;
-            $currentDate = Carbon::now();
-
-            if ($dueDate && $currentDate->gt($dueDate)) {
-                $vendorInvoice->status = "Payment Overdue";
-                $vendorInvoice->save();
+            $booking = $vendorInvoice->dailyBasis ?? $vendorInvoice->monthlyContract;
+            if ($booking) {
+                $dueDate = $vendorInvoice->due_date ? Carbon::parse($vendorInvoice->due_date) : null;
+                $currentDate = Carbon::now();
+                $booking->status = $dueDate && $currentDate->gt($dueDate) ? "Payment Overdue" : "Invoice Created & Awaiting Payment";
+                $booking->save();
             }
-
 
             return response()->json([
                 'message' => 'Vendor invoice updated successfully',
@@ -233,7 +241,6 @@ class VendorInvoiceController extends Controller
             ], 200);
         });
     }
-
     /**
      * Delete a vendor invoice record.
      *
@@ -263,10 +270,15 @@ class VendorInvoiceController extends Controller
             $vendor->current_balance -= $vendorInvoice->grand_total;
             $vendor->save();
 
-            // Update daily basis status
-            $dailyBasis = $vendorInvoice->dailyBasis;
-            $dailyBasis->status = "To Make Invoice";
-            $dailyBasis->save();
+            // Update daily basis status if applicable
+            if ($vendorInvoice->dailyBasis()->exists()) {
+                $vendorInvoice->dailyBasis->update(['status' => 'To Make Invoice']);
+            }
+
+            // Update monthly contract status if applicable
+            if ($vendorInvoice->monthlyContract()->exists()) {
+                $vendorInvoice->monthlyContract->update(['status' => 'To Make Invoice']);
+            }
 
             // Perform the deletion
             $vendorInvoice->delete();

@@ -55,7 +55,7 @@ class DriverInvoiceController extends Controller
                     return response()->json(['error' => 'Monthly Contract not found or unauthorized'], 404);
                 }
 
-                return $query->where('monthly_contract_id', $monthlyContract);
+                return $query->where('monthly_contract_id', $monthlyContractId);
             })
             ->when($request->has('status'), function ($query) use ($request) {
                 $statuses = explode(',', $request->status);
@@ -78,77 +78,6 @@ class DriverInvoiceController extends Controller
             'data' => $driverInvoices,
         ], 200);
 
-    }
-
-    /**
-     * Store a newly created driver invoice.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function store(Request $request)
-    {
-        return DB::transaction(function () use ($request) {
-            // Validate the request data
-            $validatedData = $request->validate(DriverInvoice::validationRules());
-
-            $user = Auth::user();
-
-            if (!$user) {
-                return response()->json(['error' => 'User not found'], 404);
-            }
-
-            $company = $user->company;
-
-            if (!$company) {
-                return response()->json(['error' => 'Company not found for the user'], 404);
-            }
-
-            // Create the driver invoice record
-            $driverInvoice = $company->driverInvoices()->create($validatedData);
-
-            // Create invoice item records if provided in the request
-            if ($request->has('invoice_items') && is_array($request->invoice_items)) {
-                foreach ($request->invoice_items as $itemData) {
-                    $driverInvoice->invoiceItems()->create($itemData);
-                }
-            }
-
-            // Load relationships for the response
-            $driverInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no,current_balance', 'invoiceItems']);
-
-            // Generate invoice number
-            $driverInvoice->invoice_number = $driverInvoice->generateInvoiceNumber("Daily", $driverInvoice->driver->name, $driverInvoice->id, $driverInvoice->daily_basis_id);
-            $driverInvoice->save();
-
-//            Generate Chart of accounts transaction
-            $driverInvoice->generateTransactions();
-
-
-            // Update driver balance by increasing the grand_total amount of the invoice
-            $driver = $driverInvoice->driver;
-
-            Log::info('balance before', ['balance'=>$driver->current_balance]);
-
-            $driver->current_balance += $driverInvoice->grand_total;
-            $driver->save();
-
-
-
-            // Update daily basis status
-            $dueDate = $driverInvoice->due_date ? Carbon::parse($driverInvoice->due_date) : null;
-            $currentDate = Carbon::now();
-
-            if ($dueDate && $currentDate->gt($dueDate)) {
-                $driverInvoice->status = "Payment Overdue";
-                $driverInvoice->save();
-            }
-
-            return response()->json([
-                'message' => 'Driver invoice created successfully',
-                'data' => $driverInvoice,
-            ], 201);
-        });
     }
 
     /**
@@ -178,6 +107,81 @@ class DriverInvoiceController extends Controller
     }
 
     /**
+     * Store a newly created driver invoice.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function store(Request $request)
+    {
+        return DB::transaction(function () use ($request) {
+            // Validate the request data
+            $validatedData = $request->validate(DriverInvoice::validationRules());
+
+            $user = Auth::user();
+
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404);
+            }
+
+            $company = $user->company;
+
+            if (!$company) {
+                return response()->json(['error' => 'Company not found for the user'], 404);
+            }
+
+            // Determine if the invoice is associated with a daily basis or monthly contract
+            $dailyBasisId = $request->input('daily_basis_id');
+            $monthlyContractId = $request->input('monthly_contract_id');
+
+            if (!$dailyBasisId && !$monthlyContractId) {
+                return response()->json(['error' => 'Daily basis ID or monthly contract ID is required'], 422);
+            }
+
+            // Create the driver invoice record
+            $driverInvoice = $company->driverInvoices()->create($validatedData);
+
+            // Create invoice item records if provided in the request
+            if ($request->has('invoice_items') && is_array($request->invoice_items)) {
+                foreach ($request->invoice_items as $itemData) {
+                    $driverInvoice->invoiceItems()->create($itemData);
+                }
+            }
+
+            // Load relationships for the response
+            $driverInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no,current_balance', 'driver:id,name,mobile_no,current_balance', 'invoiceItems']);
+
+            // Generate invoice number
+            $invoiceType = $dailyBasisId ? "Daily" : "Monthly";
+            $bookingId = $dailyBasisId ? $driverInvoice->daily_basis_id : $driverInvoice->monthly_contract_id;
+            $driverInvoice->invoice_number = $driverInvoice->generateInvoiceNumber($invoiceType, $driverInvoice->driver->name, $driverInvoice->id, $bookingId);
+            $driverInvoice->save();
+
+            // Generate Chart of accounts transaction
+            $driverInvoice->generateTransactions();
+
+            // Update driver balance by increasing the grand_total amount of the invoice
+            $driver = $driverInvoice->driver;
+            $driver->current_balance += $driverInvoice->grand_total;
+            $driver->save();
+
+            // Update daily basis status
+            $booking = $dailyBasisId ? $driverInvoice->dailyBasis : $driverInvoice->monthlyContract;
+            if ($booking) {
+                $dueDate = $driverInvoice->due_date ? Carbon::parse($driverInvoice->due_date) : null;
+                $currentDate = Carbon::now();
+                $booking->status = $dueDate && $currentDate->gt($dueDate) ? "Payment Overdue" : "Invoice Created & Awaiting Payment";
+                $booking->save();
+            }
+
+            return response()->json([
+                'message' => 'Driver invoice created successfully',
+                'data' => $driverInvoice,
+            ], 201);
+        });
+    }
+
+    /**
      * Update a driver invoice record.
      *
      * @param \Illuminate\Http\Request $request
@@ -190,7 +194,7 @@ class DriverInvoiceController extends Controller
 
             $driverInvoice = DriverInvoice::findOrFail($id);
 
-            // Check if the driverPayment belongs to the logged-in user's company
+            // Check if the driver invoice belongs to the logged-in user's company
             $user = Auth::user();
             if (!$user->company || $driverInvoice->company_id !== $user->company->id) {
                 return response()->json(['error' => 'Driver invoice not found or unauthorized'], 404);
@@ -199,7 +203,7 @@ class DriverInvoiceController extends Controller
             // Validate the request data
             $validatedData = $request->validate(DriverInvoice::validationRules());
 
-//            deduct old amount from driver balance
+            // Deduct old amount from driver balance
             $driver = $driverInvoice->driver;
             $driver->current_balance -= $driverInvoice->grand_total;
 
@@ -210,26 +214,25 @@ class DriverInvoiceController extends Controller
             $driverInvoice->invoiceItems()->delete();
             if ($request->has('invoice_items') && is_array($request->invoice_items)) {
                 foreach ($request->invoice_items as $itemData) {
-                    $driverInvoice->invoiceItems()->updateOrCreate(['id' => $itemData['id']], $itemData);
+                    $driverInvoice->invoiceItems()->create($itemData);
                 }
             }
 
             // Load relationships for the response
-            $driverInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no', 'invoiceItems']);
+            $driverInvoice->load(['vehicle:id,name,model_year,reg_no', 'client:id,name,address,mobile_no', 'driver:id,name,mobile_no,current_balance', 'invoiceItems']);
 
             // Update driver balance by increasing the grand_total amount of the invoice
             $driver->current_balance += $driverInvoice->grand_total;
             $driver->save();
 
             // Update daily basis status
-            $dueDate = $driverInvoice->due_date ? Carbon::parse($driverInvoice->due_date) : null;
-            $currentDate = Carbon::now();
-
-            if ($dueDate && $currentDate->gt($dueDate) ) {
-                $driverInvoice->status = "Payment Overdue";
-                $driverInvoice->save();
+            $booking = $driverInvoice->dailyBasis ?? $driverInvoice->monthlyContract;
+            if ($booking) {
+                $dueDate = $driverInvoice->due_date ? Carbon::parse($driverInvoice->due_date) : null;
+                $currentDate = Carbon::now();
+                $booking->status = $dueDate && $currentDate->gt($dueDate) ? "Payment Overdue" : "Invoice Created & Awaiting Payment";
+                $booking->save();
             }
-
 
             return response()->json([
                 'message' => 'Driver invoice updated successfully',
@@ -237,7 +240,6 @@ class DriverInvoiceController extends Controller
             ], 200);
         });
     }
-
     /**
      * Delete a driver invoice record.
      *
@@ -267,10 +269,15 @@ class DriverInvoiceController extends Controller
             $driver->current_balance -= $driverInvoice->grand_total;
             $driver->save();
 
-            // Update daily basis status
-            $dailyBasis = $driverInvoice->dailyBasis;
-            $dailyBasis->status = "To Make Invoice";
-            $dailyBasis->save();
+            // Update daily basis status if applicable
+            if ($driverInvoice->dailyBasis()->exists()) {
+                $driverInvoice->dailyBasis->update(['status' => 'To Make Invoice']);
+            }
+
+            // Update monthly contract status if applicable
+            if ($driverInvoice->monthlyContract()->exists()) {
+                $driverInvoice->monthlyContract->update(['status' => 'To Make Invoice']);
+            }
 
             // Perform the deletion
             $driverInvoice->delete();

@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Client;
-use App\Models\DailyBasis;
+use App\Models\MonthlyContract;
 use App\Models\Driver;
 use App\Models\DutyDate;
 use App\Models\Vehicle;
@@ -11,11 +11,11 @@ use App\Models\Vendor;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<DailyBasis>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<MonthlyContract>
  */
-class DailyBasisFactory extends Factory
+class MonthlyContractFactory extends Factory
 {
-    protected $model = DailyBasis::class;
+    protected $model = MonthlyContract::class;
 
     public function definition()
     {
@@ -34,25 +34,26 @@ class DailyBasisFactory extends Factory
             'driver_id' => $randomDriver,
             'vendor_id' => $vendorId,
             'client_id' => $randomClient,
-            'status' => "Booking Created",
+            'status' => "Contract Created",
             'fuel_type' => $this->faker->randomElement(['Octane', 'Diesel', 'Petrol', 'LPG', 'CNG']),
             'per_km_rate' => $this->faker->numberBetween(10,50),
-            'body_rent_per_day' => $this->faker->numberBetween(2000,15000),
-            'package_rent_per_day' => $this->faker->numberBetween(5000,25000),
-            'package_km_limit_per_day' => $this->faker->numberBetween(80,200),
+            'body_rent_per_month' => $this->faker->numberBetween(30000,150000),
+            'package_rent_per_month' => $this->faker->numberBetween(50000,200000),
+            'package_km_limit_per_month' => $this->faker->numberBetween(1000,3000),
             'lunch_per_day' => $this->faker->numberBetween(100,300),
             'dinner_per_day' => $this->faker->numberBetween(100,300),
             'ot_per_hour' => $this->faker->numberBetween(50,200),
             'tour_allowance_per_night' => $this->faker->numberBetween(800,200),
             'vendor_per_km_rate' => $this->faker->numberBetween(10,50),
-            'vendor_body_rent_per_day' => $this->faker->numberBetween(2000,15000),
-            'vendor_package_rent_per_day' => $this->faker->numberBetween(5000,25000),
-            'vendor_package_km_limit_per_day' => $this->faker->numberBetween(80,200),
+            'vendor_body_rent_per_month' => $this->faker->numberBetween(30000,150000),
+            'vendor_package_rent_per_month' => $this->faker->numberBetween(50000,200000),
+            'vendor_package_km_limit_per_month' => $this->faker->numberBetween(1000,3000),
             'vendor_lunch_per_day' => $this->faker->numberBetween(100,300),
             'vendor_dinner_per_day' => $this->faker->numberBetween(100,300),
             'vendor_ot_per_hour' => $this->faker->numberBetween(50,200),
             'vendor_tour_allowance_per_night' => $this->faker->numberBetween(800,2000),
             'duty_description' => $this->faker->text,
+            'bill_cycle_date' => $this->faker->date,
             'remarks' => $this->faker->text,
             'is_package' => $this->faker->boolean,
             'is_active' => $this->faker->boolean,
@@ -61,15 +62,22 @@ class DailyBasisFactory extends Factory
 
     public function configure()
     {
-        return $this->afterCreating(function (DailyBasis $dailyBasis) {
-            // Create duty dates associated with the DailyBasis
-            $dutyDates = DutyDate::factory(mt_rand(1, 10))->create(['daily_basis_id' => $dailyBasis->id]);
-            $dailyBasis->load('client');
-            $dailyBasis->daily_basis_number = $dailyBasis->generateDailyBasisNumber($dailyBasis->client->name, $dailyBasis->id);
-            $dailyBasis->save();
+        return $this->afterCreating(function (MonthlyContract $monthlyContract) {
+            // Create duty dates associated with the MonthlyContract
+            $contractPeriod = DutyDate::factory(1)->create(
+                [
+                    'monthly_contract_id' => $monthlyContract->id,
+                    'start_date' => $this->faker->date,
+                    'end_date' => $this->faker->date,
+                    'is_half_day' => false,
+                    ]
+            );
+            $monthlyContract->load('client');
+            $monthlyContract->monthly_contract_number = $monthlyContract->generateMonthlyContractNumber($monthlyContract->client->name, $monthlyContract->id);
+            $monthlyContract->save();
 
-            // Associate the duty dates with the DailyBasis
-            $dailyBasis->dutyDates()->saveMany($dutyDates);
+            // Associate the duty dates with the MonthlyContract
+//            $monthlyContract->contractPeriod()->save($contractPeriod);
         });
     }
 }

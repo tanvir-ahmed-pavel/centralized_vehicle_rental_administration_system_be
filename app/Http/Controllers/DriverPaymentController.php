@@ -7,6 +7,7 @@ use App\Models\DriverInvoice;
 use App\Models\DriverPayment;
 use App\Models\DailyBasis;
 use App\Http\Controllers\Controller;
+use App\Models\MonthlyContract;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -142,7 +143,6 @@ class DriverPaymentController extends Controller
     public function store(Request $request)
     {
         return DB::transaction(function () use ($request) {
-            // Validate the request data
             $validatedData = $request->validate(DriverPayment::validationRules());
 
             $user = Auth::user();
@@ -157,14 +157,24 @@ class DriverPaymentController extends Controller
                 return response()->json(['error' => 'Company not found for the user'], 404);
             }
 
+            // Determine if the payment is associated with a daily basis or monthly contract
+            $dailyBasisId = $request->input('daily_basis_id');
+            $monthlyContractId = $request->input('monthly_contract_id');
+            $invoice = DriverInvoice::findOrFail($request->driver_invoice_id);
+
+
+            if(!$dailyBasisId && !$monthlyContractId){
+                return response()->json(['error' => 'Daily basis ID or monthly contract ID is required'], 422);
+            }
+
             // Create the driver payment record
             $driverPayment = $company->driverInvoicePayments()->create($validatedData);
 
-            // Update total_paid  and status in DriverInvoice and dailybasis
-            $invoice = DriverInvoice::findOrFail($driverPayment->driver_invoice_id);
+            // Update total_paid and status in DriverInvoice and daily basis
             $invoice->total_paid += $driverPayment->amount;
             $invoice->save();
 
+            // Adjust status based on payment amount and due date
             $dueDate = $invoice->due_date ? Carbon::parse($invoice->due_date) : null;
             $currentDate = Carbon::now();
 
@@ -175,6 +185,7 @@ class DriverPaymentController extends Controller
             } elseif ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
                 $invoice->status = "Partially Paid";
             }
+
             $invoice->save();
 
             // Update driver balance
@@ -182,13 +193,15 @@ class DriverPaymentController extends Controller
             $driver->current_balance -= $driverPayment->amount;
             $driver->save();
 
-
-
-            $driverPayment->load(['driverInvoice:id,driver_id,total_paid,grand_total', 'driverInvoice.driver:id,name']);
-            $driverPayment->payment_number = $driverPayment->generatePaymentNumber("Daily", $driverPayment->driverInvoice->driver->name, $driverPayment->driver_invoice_id, $driverPayment->id);
+            // Generate payment number and save the driver payment record
+            $paymentType = $dailyBasisId ? "Daily" : "Monthly";
+            $driverPayment->payment_number = $driverPayment->generatePaymentNumber($paymentType, $driver->name, $invoice->id, $driverPayment->id);
             $driverPayment->save();
             $driverPayment->generateTransactions();
 
+            $driverPayment->load(['driverInvoice:id,driver_id,total_paid,grand_total', 'driverInvoice.driver:id,name']);
+
+            // Return the response
             return response()->json([
                 'message' => 'Driver payment record created successfully',
                 'data' => $driverPayment,
@@ -253,27 +266,67 @@ class DriverPaymentController extends Controller
     public function destroy($id)
     {
         return DB::transaction(function () use ($id) {
+            // Find the driver payment record
             $driverPayment = DriverPayment::findOrFail($id);
-
-            // Update total_paid  and status in DriverInvoice and dailybasis
             $invoice = DriverInvoice::findOrFail($driverPayment->driver_invoice_id);
-            $invoice->total_paid -= $driverPayment->amount;
-            $invoice->save();
 
-            // Update driver balance
-            $driver = $invoice->driver;
-            $driver->current_balance += $driverPayment->amount;
-            $driver->save();
 
-            if($invoice->total_paid>0 && $invoice->total_paid<$invoice->grand_total){
-                $invoice->status = "Partially Paid";
-            } elseif ($invoice->total_paid>=$invoice->grand_total){
-                $invoice->status = "Paid";
-            } else{
-                $invoice->status = "Created & Awaiting Payment";
+            // Determine if the payment is associated with a daily basis or monthly contract
+            if ($driverPayment->daily_basis_id) {
+                // If associated with a daily basis, update total_paid and status in DriverInvoice and DailyBasis
+                $dailyBasis = DailyBasis::findOrFail($driverPayment->daily_basis_id);
+
+                // Update total_paid in DriverInvoice
+                $invoice->total_paid -= $driverPayment->amount;
+
+                // Update invoice status based on total paid
+                if ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
+                    $invoice->status = "Partially Paid";
+                    $dailyBasis->status = "Partially Paid";
+                } elseif ($invoice->total_paid >= $invoice->grand_total) {
+                    $invoice->status = "Paid";
+                    $dailyBasis->status = "Paid & Closed";
+                } else {
+                    $invoice->status = "Created & Awaiting Payment";
+                    $dailyBasis->status = "Invoice Created & Awaiting Payment";
+                }
+
+                // Update driver balance
+                $driver = $invoice->driver;
+                $driver->current_balance += $driverPayment->amount;
+
+                // Save changes
+                $invoice->save();
+                $dailyBasis->save();
+                $driver->save();
+            } elseif ($driverPayment->monthly_contract_id) {
+                // If associated with a monthly contract, update total_paid and status in MonthlyContract
+                $monthlyContract = MonthlyContract::findOrFail($driverPayment->monthly_contract_id);
+
+                // Update total_paid in DriverInvoice
+                $invoice->total_paid -= $driverPayment->amount;
+
+
+                // Update contract status based on total paid
+                if ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
+                    $invoice->status = "Partially Paid";
+                } elseif ($invoice->total_paid >= $invoice->grand_total) {
+                    $invoice->status = "Paid";
+                } else {
+                    $invoice->status = "Created & Awaiting Payment";
+                }
+
+                // Update driver balance
+                $driver = $invoice->driver;
+                $driver->current_balance += $driverPayment->amount;
+
+                // Save changes
+                $monthlyContract->save();
+                $invoice->save();
+                $driver->save();
             }
-            $invoice->save();
 
+            // Delete the driver payment record
             $driverPayment->delete();
 
             return response()->json(['message' => 'Driver payment record deleted successfully'], 200);

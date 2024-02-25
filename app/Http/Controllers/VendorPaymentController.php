@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DailyBasis;
+use App\Models\MonthlyContract;
 use App\Models\Vendor;
 use App\Models\VendorInvoice;
 use App\Models\VendorPayment;
@@ -148,68 +150,6 @@ class VendorPaymentController extends Controller
     }
 
     /**
-     * Create a new vendor payment record.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function store(Request $request)
-    {
-        return DB::transaction(function () use ($request) {
-            // Validate the request data
-            $validatedData = $request->validate(VendorPayment::validationRules());
-
-            $user = Auth::user();
-
-            if (!$user) {
-                return response()->json(['error' => 'User not found'], 404);
-            }
-
-            $company = $user->company;
-
-            if (!$company) {
-                return response()->json(['error' => 'Company not found for the user'], 404);
-            }
-
-            // Create the vendor payment record
-            $vendorPayment = $company->vendorInvoicePayments()->create($validatedData);
-
-            // Update total_paid  and status in VendorInvoice and dailybasis
-            $invoice = VendorInvoice::findOrFail($vendorPayment->vendor_invoice_id);
-            $invoice->total_paid += $vendorPayment->amount;
-            $invoice->save();
-
-            $dueDate = $invoice->due_date ? Carbon::parse($invoice->due_date) : null;
-            $currentDate = Carbon::now();
-
-            if ($invoice->total_paid >= $invoice->grand_total) {
-                $invoice->status = "Paid";
-            } elseif ($dueDate && $currentDate->gt($dueDate) && $invoice->status != "Paid") {
-                $invoice->status = "Payment Overdue";
-            } elseif ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
-                $invoice->status = "Partially Paid";
-            }
-            $invoice->save();
-
-            // Update vendor balance
-            $vendor = $invoice->vendor;
-            $vendor->current_balance -= $vendorPayment->amount;
-            $vendor->save();
-
-
-            $vendorPayment->load(['vendorInvoice:id,vendor_id,total_paid,grand_total', 'vendorInvoice.vendor:id,name']);
-            $vendorPayment->payment_number = $vendorPayment->generatePaymentNumber("Daily", $vendorPayment->vendorInvoice->vendor->name, $vendorPayment->vendor_invoice_id, $vendorPayment->id);
-            $vendorPayment->save();
-            $vendorPayment->generateTransactions();
-
-            return response()->json([
-                'message' => 'Vendor payment record created successfully',
-                'data' => $vendorPayment,
-            ], 201);
-        });
-    }
-
-    /**
      * Get the details of a specific vendor payment record.
      *
      * @param int $id
@@ -232,6 +172,82 @@ class VendorPaymentController extends Controller
             'data' => $vendorPayment,
         ], 200);
     }
+
+    /**
+     * Create a new vendor payment record.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function store(Request $request)
+    {
+        return DB::transaction(function () use ($request) {
+            $validatedData = $request->validate(VendorPayment::validationRules());
+
+            $user = Auth::user();
+
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404);
+            }
+
+            $company = $user->company;
+
+            if (!$company) {
+                return response()->json(['error' => 'Company not found for the user'], 404);
+            }
+
+            // Determine if the payment is associated with a daily basis or monthly contract
+            $dailyBasisId = $request->input('daily_basis_id');
+            $monthlyContractId = $request->input('monthly_contract_id');
+            $invoice = VendorInvoice::findOrFail($request->vendor_invoice_id);
+
+
+            if(!$dailyBasisId && !$monthlyContractId){
+                return response()->json(['error' => 'Daily basis ID or monthly contract ID is required'], 422);
+            }
+
+            // Create the vendor payment record
+            $vendorPayment = $company->vendorInvoicePayments()->create($validatedData);
+
+            // Update total_paid and status in VendorInvoice and daily basis
+            $invoice->total_paid += $vendorPayment->amount;
+            $invoice->save();
+
+            // Adjust status based on payment amount and due date
+            $dueDate = $invoice->due_date ? Carbon::parse($invoice->due_date) : null;
+            $currentDate = Carbon::now();
+
+            if ($invoice->total_paid >= $invoice->grand_total) {
+                $invoice->status = "Paid";
+            } elseif ($dueDate && $currentDate->gt($dueDate) && $invoice->status != "Paid") {
+                $invoice->status = "Payment Overdue";
+            } elseif ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
+                $invoice->status = "Partially Paid";
+            }
+
+            $invoice->save();
+
+            // Update vendor balance
+            $vendor = $invoice->vendor;
+            $vendor->current_balance -= $vendorPayment->amount;
+            $vendor->save();
+
+            // Generate payment number and save the vendor payment record
+            $paymentType = $dailyBasisId ? "Daily" : "Monthly";
+            $vendorPayment->payment_number = $vendorPayment->generatePaymentNumber($paymentType, $vendor->name, $invoice->id, $vendorPayment->id);
+            $vendorPayment->save();
+            $vendorPayment->generateTransactions();
+
+            $vendorPayment->load(['vendorInvoice:id,vendor_id,total_paid,grand_total', 'vendorInvoice.vendor:id,name']);
+
+            // Return the response
+            return response()->json([
+                'message' => 'Vendor payment record created successfully',
+                'data' => $vendorPayment,
+            ], 201);
+        });
+    }
+
 
     /**
      * Update a vendor payment record.
@@ -266,27 +282,67 @@ class VendorPaymentController extends Controller
     public function destroy($id)
     {
         return DB::transaction(function () use ($id) {
+            // Find the vendor payment record
             $vendorPayment = VendorPayment::findOrFail($id);
-
-            // Update total_paid  and status in VendorInvoice and dailybasis
             $invoice = VendorInvoice::findOrFail($vendorPayment->vendor_invoice_id);
-            $invoice->total_paid -= $vendorPayment->amount;
-            $invoice->save();
 
-            // Update vendor balance
-            $vendor = $invoice->vendor;
-            $vendor->current_balance += $vendorPayment->amount;
-            $vendor->save();
 
-            if ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
-                $invoice->status = "Partially Paid";
-            } elseif ($invoice->total_paid >= $invoice->grand_total) {
-                $invoice->status = "Paid";
-            } else {
-                $invoice->status = "Created & Awaiting Payment";
+            // Determine if the payment is associated with a daily basis or monthly contract
+            if ($vendorPayment->daily_basis_id) {
+                // If associated with a daily basis, update total_paid and status in VendorInvoice and DailyBasis
+                $dailyBasis = DailyBasis::findOrFail($vendorPayment->daily_basis_id);
+
+                // Update total_paid in VendorInvoice
+                $invoice->total_paid -= $vendorPayment->amount;
+
+                // Update invoice status based on total paid
+                if ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
+                    $invoice->status = "Partially Paid";
+                    $dailyBasis->status = "Partially Paid";
+                } elseif ($invoice->total_paid >= $invoice->grand_total) {
+                    $invoice->status = "Paid";
+                    $dailyBasis->status = "Paid & Closed";
+                } else {
+                    $invoice->status = "Created & Awaiting Payment";
+                    $dailyBasis->status = "Invoice Created & Awaiting Payment";
+                }
+
+                // Update vendor balance
+                $vendor = $invoice->vendor;
+                $vendor->current_balance += $vendorPayment->amount;
+
+                // Save changes
+                $invoice->save();
+                $dailyBasis->save();
+                $vendor->save();
+            } elseif ($vendorPayment->monthly_contract_id) {
+                // If associated with a monthly contract, update total_paid and status in MonthlyContract
+                $monthlyContract = MonthlyContract::findOrFail($vendorPayment->monthly_contract_id);
+
+                // Update total_paid in VendorInvoice
+                $invoice->total_paid -= $vendorPayment->amount;
+
+
+                // Update contract status based on total paid
+                if ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
+                    $invoice->status = "Partially Paid";
+                } elseif ($invoice->total_paid >= $invoice->grand_total) {
+                    $invoice->status = "Paid";
+                } else {
+                    $invoice->status = "Created & Awaiting Payment";
+                }
+
+                // Update vendor balance
+                $vendor = $invoice->vendor;
+                $vendor->current_balance += $vendorPayment->amount;
+
+                // Save changes
+                $monthlyContract->save();
+                $invoice->save();
+                $vendor->save();
             }
-            $invoice->save();
 
+            // Delete the vendor payment record
             $vendorPayment->delete();
 
             return response()->json(['message' => 'Vendor payment record deleted successfully'], 200);
