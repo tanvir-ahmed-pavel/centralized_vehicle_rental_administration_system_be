@@ -29,11 +29,27 @@ class UpdateStatus extends Command
      */
     public function handle(): void
     {
-        $clientInvoices = ClientInvoice::with("dailyBases")->all();
+        $clientInvoices = ClientInvoice::all();
         $driverInvoices = DriverInvoice::all();
+        $vendorInvoices = DriverInvoice::all();
+        $vehicles = DriverInvoice::all();
         $currentDate = Carbon::now();
 
-        foreach ($clientInvoices as $clientInvoice){
+
+        foreach ($vehicles as $vehicle) {
+            if ($vehicle->monthlyContracts()->contractPeriod()->whereDate('start_date', '<=', $currentDate)->whereDate('end_date', '>=', $currentDate)->exists()
+                || $vehicle->dailyBases()->dutyDates()->whereDate('start_date', $currentDate)->exists()) {
+                $vehicle->is_available = false;
+                $vehicle->save();
+            } else {
+                $vehicle->is_available = true;
+                $vehicle->save();
+            }
+
+
+        }
+
+        foreach ($clientInvoices as $clientInvoice) {
             $dueDate = $clientInvoice->due_date ? Carbon::parse($clientInvoice->due_date) : null;
 
             if ($dueDate && $currentDate->gt($dueDate) && $clientInvoice->status != "Paid") {
@@ -45,7 +61,7 @@ class UpdateStatus extends Command
             }
         }
 
-        foreach ($driverInvoices as $driverInvoice){
+        foreach ($driverInvoices as $driverInvoice) {
             $dueDate = $driverInvoice->due_date ? Carbon::parse($driverInvoice->due_date) : null;
 
             if ($dueDate && $currentDate->gt($dueDate) && $driverInvoice->status != "Paid") {
@@ -54,7 +70,16 @@ class UpdateStatus extends Command
             }
         }
 
-        $this->info('Invoice statuses updated successfully!');
+        foreach ($vendorInvoices as $vendorInvoice) {
+            $dueDate = $vendorInvoice->due_date ? Carbon::parse($vendorInvoice->due_date) : null;
+
+            if ($dueDate && $currentDate->gt($dueDate) && $vendorInvoice->status != "Paid") {
+                $vendorInvoice->status = "Payment Overdue";
+                $vendorInvoice->save();
+            }
+        }
+
+        $this->info('Invoice and vehicle statuses updated successfully!');
 
     }
 }

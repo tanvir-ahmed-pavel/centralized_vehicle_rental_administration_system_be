@@ -125,7 +125,7 @@ class ClientInvoice extends Model
     public function generateTransactions()
     {
         $chartOfAccountReceivable = ChartOfAccount::where('code', '1200')->first(); // Assuming '1200' is the code for Accounts Receivable
-        $chartOfAccountSales = ChartOfAccount::where('code', '4100')->first(); // Assuming '4100' is the code for Sales
+        $chartOfAccountSales = $this->daily_basis_id ? ChartOfAccount::where('code', '4300')->first() : ChartOfAccount::where('code', '4400')->first(); // Assuming '4100' is the code for Sales
 
         if (!$chartOfAccountReceivable || !$chartOfAccountSales) {
             // Handle the case where one or both chart of accounts are not found

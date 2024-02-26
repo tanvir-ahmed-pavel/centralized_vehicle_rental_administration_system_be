@@ -6,6 +6,7 @@ use App\Models\DailyBasis;
 use App\Http\Controllers\Controller;
 use App\Models\DutyDate;
 use App\Traits\DataMapping;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -194,13 +195,22 @@ class DailyBasisController extends Controller
                 }
             }
 
+
             $dailyBasis->load(['client:id,name,address,city,country,mobile_no,email',
-                'vehicle:id,name,model_year as model,reg_no as reg',
+                'vehicle:id,name,model_year as model,reg_no as reg,is_available',
                 'driver:id,name,mobile_no,email', 'dutyDates' => function ($query) {
                     $query->orderBy('start_date', 'asc');
                 },
                 'vendor:id,name,address,city,country,mobile_no,email'])
                 ->loadCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments");
+
+            $currentDate = Carbon::now();
+            if($dailyBasis->dutyDates()->whereDate('start_date', $currentDate)->exists()){
+                $vehicle = $dailyBasis->vehicle;
+                $vehicle->is_available = false;
+                $vehicle->save();
+            }
+
 
             return response()->json([
                 'message' => 'Daily basis record created successfully',
@@ -295,7 +305,9 @@ class DailyBasisController extends Controller
             if ($dailyBasis->clientInvoices()->exists() || $dailyBasis->fuelAdvancePayments()->exists() || $dailyBasis->driverInvoices()->exists() || $dailyBasis->vendorInvoices()->exists()) {
                 return response()->json(['error' => 'Daily basis record cannot be deleted as it has associated invoices'], 422);
             }
-
+            $vehicle = $dailyBasis->vehicle;
+            $vehicle->is_available = true;
+            $vehicle->save();
             // No associated invoices, proceed with deletion
             $dailyBasis->delete();
 

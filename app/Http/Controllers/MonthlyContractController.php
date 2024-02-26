@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\MonthlyContract;
 use App\Http\Controllers\Controller;
 use App\Traits\DataMapping;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -135,8 +136,17 @@ class MonthlyContractController extends Controller
             $monthlyContract->load(['client:id,name,address,city,country,mobile_no,email',
                 'vehicle:id,name,model_year as model,reg_no as reg',
                 'driver:id,name,mobile_no,email', 'contractPeriod',
-                'vendor:id,name,address,city,country,mobile_no,email'])
+                'vendor:id,name,address,city,country,mobile_no,email',
+                'contractPeriod'
+            ])
                 ->loadCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments");
+
+            $currentDate = Carbon::now();
+            if($monthlyContract->contractPeriod()->whereDate('start_date','<=', $currentDate)->exists()){
+                $vehicle = $monthlyContract->vehicle;
+                $vehicle->is_available = false;
+                $vehicle->save();
+            }
 
             return response()->json([
                 'message' => 'Monthly contract record created successfully',
@@ -231,6 +241,9 @@ class MonthlyContractController extends Controller
                 return response()->json(['error' => 'Monthly contract record cannot be deleted as it has associated invoices'], 422);
             }
 
+            $vehicle = $monthlyContract->vehicle;
+            $vehicle->is_available = true;
+            $vehicle->save();
             // No associated invoices, proceed with deletion
             $monthlyContract->delete();
 
