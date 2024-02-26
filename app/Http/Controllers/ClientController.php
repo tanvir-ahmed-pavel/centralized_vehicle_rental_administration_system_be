@@ -113,7 +113,7 @@ class ClientController extends Controller
         $client->lifetime_billed = $lifetimeBilled;
         $client->lifetime_paid = $lifetimePaid;
 
-        $client->loadCount(["dailyBases", "invoices", "payments"]);
+        $client->loadCount(["dailyBases", "monthlyContracts", "invoices", "payments"]);
 
         return response()->json([
             'message' => 'Client retrieved successfully',

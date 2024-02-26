@@ -124,7 +124,7 @@ class DriverController extends Controller
         $driver->lifetime_billed = $lifetimeBilled;
         $driver->lifetime_paid = $lifetimePaid;
 
-        $driver->loadCount(["dailyBases", "invoices", "payments"]);
+        $driver->loadCount(["dailyBases", "monthlyContracts", "invoices", "payments"]);
 
         return response()->json([
             'message' => 'Driver retrieved successfully',

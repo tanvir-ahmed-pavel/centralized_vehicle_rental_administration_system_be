@@ -111,7 +111,7 @@ class VendorController extends Controller
         $vendor->lifetime_billed = $lifetimeBilled;
         $vendor->lifetime_paid = $lifetimePaid;
 
-        $vendor->loadCount(["dailyBases", "invoices", "payments"]);
+        $vendor->loadCount(["dailyBases", "monthlyContracts", "invoices", "payments"]);
 
         return response()->json([
             'message' => 'Vendor retrieved successfully',
