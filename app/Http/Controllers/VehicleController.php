@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Traits\DataMapping;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class VehicleController extends Controller
 {
@@ -227,9 +228,24 @@ class VehicleController extends Controller
      */
     public function destroy($id)
     {
-        $vehicle = Vehicle::findOrFail($id);
-        $vehicle->delete();
+        return DB::transaction(function () use ($id) {
+            // Find the client invoice or throw an exception if not found
+            $vehicle = Vehicle::findOrFail($id);
 
-        return response()->json(['message' => 'Vehicle deleted successfully'], 200);
+            // Check if the clientInvoice belongs to the logged-in user's company
+            $user = Auth::user();
+            if (!$user->company || $vehicle->company_id !== $user->company->id) {
+                return response()->json(['error' => 'Vehicle not found or unauthorized'], 404);
+            }
+
+            // Update daily basis status if applicable
+            if ($vehicle->dailyBases()->exists() || $vehicle->monthlyContracts()->exists()) {
+                return response()->json(['error' => 'Cannot delete vehicle with associated bookings'], 400);
+
+            }
+            $vehicle->delete();
+
+            return response()->json(['message' => 'Vehicle deleted successfully'], 200);
+        });
     }
 }

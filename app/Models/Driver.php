@@ -101,6 +101,12 @@ class Driver extends Model
         return $this->hasMany(DailyBasis::class);
     }
 
+    public function monthlyContracts()
+    {
+        return $this->hasMany(MonthlyContract::class);
+    }
+
+
     public function invoices()
     {
         return $this->hasMany(DriverInvoice::class);

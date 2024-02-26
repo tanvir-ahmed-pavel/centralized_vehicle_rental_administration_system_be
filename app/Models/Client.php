@@ -98,6 +98,11 @@ class Client extends Model
         return $this->hasMany(DailyBasis::class);
     }
 
+    public function monthlyContracts()
+    {
+        return $this->hasMany(MonthlyContract::class);
+    }
+
     public function invoices()
     {
         return $this->hasMany(ClientInvoice::class);

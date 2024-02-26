@@ -36,6 +36,9 @@ class FuelAdvancePaymentController extends Controller
             ->with([
                 'dailyBasis:id,client_id,vehicle_id,driver_id',
                 'monthlyContract:id,client_id,vehicle_id,driver_id',
+                'client:id,name',
+                'driver:id,name',
+                'vendor:id,name',
             ])
             ->when($request->has('client_id'), function ($query) use ($request, $company) {
                 // Filter by client_id if the 'client_id' parameter is present in the request
@@ -50,12 +53,48 @@ class FuelAdvancePaymentController extends Controller
 
                 return $query->where('client_id', $client_id);
             })
+            ->when($request->has('payment_from'), function ($query) use ($request) {
+                return $query->where('payment_from', $request->payment_from);
+            })
+            ->when($request->has('payment_type'), function ($query) use ($request) {
+                return $query->where('payment_type', $request->payment_type);
+            })
+            ->when($request->has('payment_to'), function ($query) use ($request) {
+                if($request->payment_to == 'Driver'){
+                    return $query->whereNotNull('driver_id');
+                } elseif ($request->payment_to == 'Vendor'){
+                    return $query->whereNotNull('vendor_id');
+                }
+                return $query;
+            })
+            ->when($request->has('booking_type'), function ($query) use ($request) {
+                if($request->booking_type == 'Daily Basis'){
+                    return $query->whereNotNull('daily_basis_id');
+                } elseif ($request->booking_type == 'Monthly Contract'){
+                    return $query->whereNotNull('monthly_contract_id');
+                }
+                return $query;
+            })
+            ->when($request->has('start_date') && $request->has('end_date'), function ($query) use ($request) {
+                return $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
+            })
             ->orderBy($sortBy, $sortOrder)
             ->paginate($perPage, ['*'], 'page', $page);
+
+        $fuelAdvanceTotal = $fuelAdvancePayments->sum('amount');
+        $totalPaidForFuel = $fuelAdvancePayments->where('payment_type', 'Fuel Payment')->sum('amount');
+        $clientFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Client')->sum('amount');
+        $vendorFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Vendor')->sum('amount');
+        $ownFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Self')->sum('amount');
 
         return response()->json([
             'message' => 'Fuel advance payments retrieved successfully',
             'data' => $fuelAdvancePayments,
+            'fuelAdvanceTotal' => $fuelAdvanceTotal,
+            'totalPaidForFuel' => $totalPaidForFuel,
+            'clientFuelAdvanceTotal' => $clientFuelAdvanceTotal,
+            'vendorFuelAdvanceTotal' => $vendorFuelAdvanceTotal,
+            'ownFuelAdvanceTotal' => $ownFuelAdvanceTotal,
         ], 200);
     }
 
@@ -171,7 +210,7 @@ class FuelAdvancePaymentController extends Controller
         $ownFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Self')->sum('amount');
 
         return response()->json([
-            'message' => 'Fuel advance payments retrieved successfully for the DailyBasis',
+            'message' => 'Fuel advance payments retrieved successfully for the monthly contract',
             'data' => $fuelAdvancePayments,
             'fuelAdvanceTotal' => $fuelAdvanceTotal,
             'totalPaidForFuel' => $totalPaidForFuel,

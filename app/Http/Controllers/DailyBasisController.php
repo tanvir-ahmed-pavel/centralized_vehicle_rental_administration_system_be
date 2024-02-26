@@ -21,7 +21,21 @@ class DailyBasisController extends Controller
      */
     public function index(Request $request)
     {
-        $company = Auth::user()->company;
+        // Check if the user is authenticated
+        if (!Auth::check()) {
+            return response()->json(['error' => 'User is not authenticated'], 401);
+        }
+
+        // Retrieve the authenticated user
+        $user = Auth::user();
+
+        // Check if the user has a company associated with them
+        if (!$user->company) {
+            return response()->json(['error' => 'User does not belong to a company'], 403);
+        }
+
+        // Proceed with fetching daily basis records
+        $company = $user->company;
 
         // Set default values for pagination if not provided in the request
         $page = $request->has('page') ? $request->page : 1;
@@ -37,11 +51,6 @@ class DailyBasisController extends Controller
                 $query->orderBy('start_date', 'asc');
             }, 'vendor'])
             ->withCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments")
-            ->when($request->has('status'), function ($query) use ($request) {
-                // Filter by status if the 'status' parameter is present in the request
-                $statuses = explode(',', $request->status);
-                return $query->whereIn('status', $statuses);
-            })
             ->when($request->has('client_id'), function ($query) use ($request) {
                 // Filter by client_id if the 'client_id' parameter is present in the request
                 $client_id = $request->client_id;
@@ -80,6 +89,11 @@ class DailyBasisController extends Controller
                 }
 
                 return $query->where('driver_id', $driver_id);
+            })
+            ->when($request->has('status'), function ($query) use ($request) {
+                // Filter by status if the 'status' parameter is present in the request
+                $statuses = explode(',', $request->status);
+                return $query->whereIn('status', $statuses);
             })
             ->when($request->has('start_date') && $request->has('end_date'), function ($query) use ($request) {
                 return $query->whereBetween('created_at', [$request->start_date, $request->end_date]);

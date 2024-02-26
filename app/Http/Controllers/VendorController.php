@@ -6,6 +6,7 @@ use App\Models\Vendor;
 use App\Traits\DataMapping;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class VendorController extends Controller
 {
@@ -148,9 +149,24 @@ class VendorController extends Controller
      */
     public function destroy($id)
     {
-        $vendor = Vendor::findOrFail($id);
-        $vendor->delete();
+        return DB::transaction(function () use ($id) {
+            // Find the client invoice or throw an exception if not found
+            $vendor = Vendor::findOrFail($id);
 
-        return response()->json(['message' => 'Vendor deleted successfully'], 200);
+            // Check if the clientInvoice belongs to the logged-in user's company
+            $user = Auth::user();
+            if (!$user->company || $vendor->company_id !== $user->company->id) {
+                return response()->json(['error' => 'Vendor not found or unauthorized'], 404);
+            }
+
+            // Update daily basis status if applicable
+            if ($vendor->dailyBases()->exists() || $vendor->monthlyContracts()->exists()) {
+                return response()->json(['error' => 'Cannot delete vendor with associated bookings'], 400);
+
+            }
+            $vendor->delete();
+
+            return response()->json(['message' => 'Vendor deleted successfully'], 200);
+        });
     }
 }

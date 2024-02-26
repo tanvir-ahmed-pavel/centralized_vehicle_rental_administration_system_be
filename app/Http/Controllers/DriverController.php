@@ -6,6 +6,7 @@ use App\Models\Driver;
 use App\Traits\DataMapping;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DriverController extends Controller
 {
@@ -128,7 +129,7 @@ class DriverController extends Controller
         return response()->json([
             'message' => 'Driver retrieved successfully',
             'data' => $driver
-        ],200);
+        ], 200);
 
     }
 
@@ -168,9 +169,24 @@ class DriverController extends Controller
      */
     public function destroy($id)
     {
-        $driver = Driver::findOrFail($id);
-        $driver->delete();
+        return DB::transaction(function () use ($id) {
+            // Find the client invoice or throw an exception if not found
+            $driver = Driver::findOrFail($id);
 
-        return response()->json(['message' => 'Driver deleted successfully'], 200);
+            // Check if the clientInvoice belongs to the logged-in user's company
+            $user = Auth::user();
+            if (!$user->company || $driver->company_id !== $user->company->id) {
+                return response()->json(['error' => 'Driver not found or unauthorized'], 404);
+            }
+
+            // Update daily basis status if applicable
+            if ($driver->dailyBases()->exists() || $driver->monthlyContracts()->exists()) {
+                return response()->json(['error' => 'Cannot delete driver with associated bookings'], 400);
+
+            }
+            $driver->delete();
+
+            return response()->json(['message' => 'Driver deleted successfully'], 200);
+        });
     }
 }

@@ -8,6 +8,7 @@ use App\Models\ClientInvoice;
 use App\Traits\DataMapping;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ClientController extends Controller
 {
@@ -153,9 +154,24 @@ class ClientController extends Controller
      */
     public function destroy($id)
     {
-        $client = Client::findOrFail($id);
-        $client->delete();
+        return DB::transaction(function () use ($id) {
+            // Find the client invoice or throw an exception if not found
+            $client = Client::findOrFail($id);
 
-        return response()->json(['message' => 'Client deleted successfully'], 200);
+            // Check if the clientInvoice belongs to the logged-in user's company
+            $user = Auth::user();
+            if (!$user->company || $client->company_id !== $user->company->id) {
+                return response()->json(['error' => 'Client not found or unauthorized'], 404);
+            }
+
+            // Update daily basis status if applicable
+            if ($client->dailyBases()->exists() || $client->monthlyContracts()->exists()) {
+                return response()->json(['error' => 'Cannot delete client with associated bookings'], 400);
+
+            }
+            $client->delete();
+
+            return response()->json(['message' => 'Client deleted successfully'], 200);
+        });
     }
 }

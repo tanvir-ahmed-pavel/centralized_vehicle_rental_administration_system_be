@@ -35,11 +35,6 @@ class MonthlyContractController extends Controller
             'driver:id,name,mobile_no,email', 'contractPeriod',
             'vendor:id,name,address,city,country,mobile_no,email'])
             ->withCount("clientInvoices", "driverInvoices", "vendorInvoices", "fuelAdvancePayments")
-            ->when($request->has('status'), function ($query) use ($request) {
-                // Filter by status if the 'status' parameter is present in the request
-                $statuses = explode(',', $request->status);
-                return $query->whereIn('status', $statuses);
-            })
             ->when($request->has('client_id'), function ($query) use ($request) {
                 // Filter by client_id if the 'client_id' parameter is present in the request
                 $client_id = $request->client_id;
@@ -53,54 +48,42 @@ class MonthlyContractController extends Controller
 
                 return $query->where('client_id', $client_id);
             })
+            ->when($request->has('vendor_id'), function ($query) use ($request) {
+                // Filter by vendor_id if the 'vendor_id' parameter is present in the request
+                $vendor_id = $request->vendor_id;
+
+                // Check if the provided vendor_id belongs to the company for ownership verification
+                $vendor = $query->first()->company->vendors()->find($vendor_id);
+
+                if (!$vendor) {
+                    return response()->json(['error' => 'Vendor not found or unauthorized'], 404);
+                }
+
+                return $query->where('vendor_id', $vendor_id);
+            })
+            ->when($request->has('driver_id'), function ($query) use ($request) {
+                // Filter by driver_id if the 'driver_id' parameter is present in the request
+                $driver_id = $request->driver_id;
+
+                // Check if the provided driver_id belongs to the company for ownership verification
+                $vendor = $query->first()->company->vendors()->find($driver_id);
+
+                if (!$vendor) {
+                    return response()->json(['error' => 'Vendor not found or unauthorized'], 404);
+                }
+
+                return $query->where('driver_id', $driver_id);
+            })
+            ->when($request->has('status'), function ($query) use ($request) {
+                // Filter by status if the 'status' parameter is present in the request
+                $statuses = explode(',', $request->status);
+                return $query->whereIn('status', $statuses);
+            })
+            ->when($request->has('start_date') && $request->has('end_date'), function ($query) use ($request) {
+                return $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
+            })
             ->orderBy($sortBy, $sortOrder)
             ->paginate($perPage, ['*'], 'page', $page);
-
-        // Map the data to the desired structure
-//        $mappedData = $monthlyContracts->map(function ($monthlyContract) {
-//            return [
-//                'id' => $monthlyContract->id,
-//                'monthly_contract_number' => $monthlyContract->monthly_contract_number,
-//                'client_id' => $monthlyContract->client_id,
-//                'client' => [
-//                    'id' => $monthlyContract->client->id,
-//                    'name' => $monthlyContract->client->name,
-//                ],
-//                'vendor_id' => $monthlyContract->vendor_id,
-//                'vendor' => [
-//                    'id' => optional($monthlyContract->vendor)->id,
-//                    'name' => optional($monthlyContract->vendor)->name,
-//                ],
-//                'vehicle_id' => $monthlyContract->vehicle_id,
-//                'vehicle' => [
-//                    'id' => $monthlyContract->vehicle->id,
-//                    'name' => $monthlyContract->vehicle->name,
-//                    'model_year' => $monthlyContract->vehicle->model_year,
-//                    'reg' => $monthlyContract->vehicle->reg_no,
-//                ],
-//                'driver_id' => $monthlyContract->driver_id,
-//                'driver' => [
-//                    'id' => $monthlyContract->driver->id,
-//                    'name' => $monthlyContract->driver->name,
-//                    'mobile' => $monthlyContract->driver->mobile_no,
-//                ],
-//                'duty_dates' => $monthlyContract->contractPeriod->map(function ($contractPeriod) {
-//                    return [
-//                        'id' => $contractPeriod->id,
-//                        'start_date' => $contractPeriod->start_date,
-//                        'end_date' => $contractPeriod->end_date,
-//                        'is_half_day' => $contractPeriod->is_half_day,
-//                    ];
-//                }),
-//                'client_invoices_count' => $monthlyContract->client_invoices_count,
-//                'driver_invoices_count' => $monthlyContract->driver_invoices_count,
-//                'vendor_invoices_count' => $monthlyContract->vendor_invoices_count,
-//                'fuel_advance_payments_count' => $monthlyContract->fuel_advance_payments_count,
-//                'created_at' => $monthlyContract->created_at,
-//                'status' => $monthlyContract->status,
-//            ];
-//        });
-
         return response()->json([
             'message' => 'Monthly contract records retrieved successfully',
 //            'data' => $this->mapData($monthlyContracts, $mappedData)

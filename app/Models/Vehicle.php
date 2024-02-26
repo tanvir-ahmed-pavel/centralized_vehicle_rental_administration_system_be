@@ -119,4 +119,9 @@ class Vehicle extends Model
         return $this->hasMany(DailyBasis::class);
     }
 
+    public function monthlyContracts()
+    {
+        return $this->hasMany(MonthlyContract::class);
+    }
+
 }
