@@ -76,7 +76,8 @@ class CompanyController extends Controller
         $password = $request->current_password;
         if (Hash::check($password, auth()->user()->password)) {
             $company->update($validatedData);
-
+            $user = Auth::user();
+            $user->update(['name'=> $request->user_name]);
             if($request->has("new_password") && isEmpty($request->new_password)){
                 $validator = Validator::make(['new_password' => $request->new_password], [
                     'new_password' => 'required|string|min:8|confirmed',
