@@ -122,11 +122,26 @@ class DriverPaymentController extends Controller
             return response()->json(['error' => 'Driver not found or unauthorized'], 404);
         }
 
-        // Fetch payments under the specified invoice
-        $payments = $driver->payments()
-            ->with(['driverInvoice:id,driver_id,invoice_number'])
-            ->orderBy($sortBy, $sortOrder)
-            ->paginate($perPage, ['*'], 'page', $page);
+        $driverInvoicePayments = $driver->payments()
+            ->select('id', 'company_id', 'driver_invoice_id', 'daily_basis_id', 'monthly_contract_id',
+                'driver_id', 'date', 'amount', 'payment_method',
+                'payment_ref', 'payment_number', 'remarks', "created_at")
+            ->orderBy($sortBy, $sortOrder);
+
+        $fuelAdvancePayments = $driver->fuelAdvancePayments()
+            ->select('id', 'company_id', DB::raw('null as driver_invoice_id'), 'daily_basis_id', 'monthly_contract_id',
+                'driver_id', 'posting_date as date', 'amount', 'payment_method',
+                'payment_ref', 'payment_number', 'remarks', "created_at")
+            ->orderBy($sortBy, $sortOrder);
+
+        // Combine both queries using union
+        $payments = $driverInvoicePayments->unionAll($fuelAdvancePayments)
+            ->with([
+                'driverInvoice:id,driver_id,invoice_number',
+                'dailyBasis:id,daily_basis_number',
+                'monthlyContract:id,monthly_contract_number'
+            ])
+            ->orderBy($sortBy, $sortOrder)->paginate($perPage, ['*'], 'page', $page);
 
         return response()->json([
             'message' => 'Payments for the specified driver retrieved successfully',

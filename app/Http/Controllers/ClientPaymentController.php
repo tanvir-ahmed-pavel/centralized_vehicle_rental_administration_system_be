@@ -137,7 +137,13 @@ class ClientPaymentController extends Controller
             ->orderBy($sortBy, $sortOrder);
 
         // Combine both queries using union
-        $payments = $clientInvoicePayments->unionAll($fuelAdvancePayments)->with(['clientInvoice:id,client_id,invoice_number', 'dailyBasis:id,daily_basis_number'])->orderBy($sortBy, $sortOrder)->paginate($perPage, ['*'], 'page', $page);
+        $payments = $clientInvoicePayments->unionAll($fuelAdvancePayments)
+            ->with([
+                'clientInvoice:id,client_id,invoice_number',
+                'dailyBasis:id,daily_basis_number',
+                'monthlyContract:id,monthly_contract_number'
+            ])
+            ->orderBy($sortBy, $sortOrder)->paginate($perPage, ['*'], 'page', $page);
 
         return response()->json([
             'message' => 'Payments for the specified client retrieved successfully',
@@ -193,10 +199,25 @@ class ClientPaymentController extends Controller
 
             if ($invoice->total_paid >= $invoice->grand_total) {
                 $invoice->status = "Paid";
+                if($dailyBasisId){
+                    $dailyBasis = DailyBasis::findOrFail($dailyBasisId);
+                    $dailyBasis->status = "Paid & Closed";
+                    $dailyBasis->save();
+                }
             } elseif ($dueDate && $currentDate->gt($dueDate) && $invoice->status != "Paid") {
                 $invoice->status = "Payment Overdue";
+                if($dailyBasisId){
+                    $dailyBasis = DailyBasis::findOrFail($dailyBasisId);
+                    $dailyBasis->status = "Payment Overdue";
+                    $dailyBasis->save();
+                }
             } elseif ($invoice->total_paid > 0 && $invoice->total_paid < $invoice->grand_total) {
                 $invoice->status = "Partially Paid";
+                if($dailyBasisId){
+                    $dailyBasis = DailyBasis::findOrFail($dailyBasisId);
+                    $dailyBasis->status = "Partially Paid";
+                    $dailyBasis->save();
+                }
             }
 
             $invoice->save();

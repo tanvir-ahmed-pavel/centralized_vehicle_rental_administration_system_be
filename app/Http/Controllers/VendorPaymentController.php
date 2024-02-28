@@ -139,7 +139,11 @@ class VendorPaymentController extends Controller
 
         // Combine both queries using union
         $payments = $vendorInvoicePayments->unionAll($fuelAdvancePayments)
-            ->with(['vendorInvoice:id,vendor_id,invoice_number', 'dailyBasis:id,daily_basis_number'])
+            ->with([
+                'vendorInvoice:id,vendor_id,invoice_number',
+                'dailyBasis:id,daily_basis_number',
+                'monthlyContract:id,monthly_contract_number'
+                ])
             ->orderBy($sortBy, $sortOrder)->paginate($perPage, ['*'], 'page', $page);
 
 
