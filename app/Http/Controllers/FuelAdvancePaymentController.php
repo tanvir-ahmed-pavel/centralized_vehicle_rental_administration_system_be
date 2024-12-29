@@ -77,8 +77,8 @@ class FuelAdvancePaymentController extends Controller
             })
             ->when($request->has('start_date') && $request->has('end_date'), function ($query) use ($request) {
                 return $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
-            })
-            ->orderBy($sortBy, $sortOrder)
+            });
+        $paginatedPayments = $fuelAdvancePayments->orderBy($sortBy, $sortOrder)
             ->paginate($perPage, ['*'], 'page', $page);
 
         $fuelAdvanceTotal = $fuelAdvancePayments->sum('amount');
@@ -87,9 +87,10 @@ class FuelAdvancePaymentController extends Controller
         $vendorFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Vendor')->sum('amount');
         $ownFuelAdvanceTotal = $fuelAdvancePayments->where('payment_from', 'Self')->sum('amount');
 
+
         return response()->json([
             'message' => 'Fuel advance payments retrieved successfully',
-            'data' => $fuelAdvancePayments,
+            'data' => $paginatedPayments,
             'fuelAdvanceTotal' => $fuelAdvanceTotal,
             'totalPaidForFuel' => $totalPaidForFuel,
             'clientFuelAdvanceTotal' => $clientFuelAdvanceTotal,
