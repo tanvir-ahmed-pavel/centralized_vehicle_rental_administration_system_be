@@ -20,11 +20,11 @@ jobs:
               cd /www/wwwroot/api-cvras.ddns.net/centralized_vehicle_rental_administration_system_be && \
               git config --global --add safe.directory /www/wwwroot/api-cvras.ddns.net/centralized_vehicle_rental_administration_system_be && \
               git pull origin ${CIRCLE_BRANCH} && \
-              /usr/bin/php82 composer install --no-dev --optimize-autoloader --no-plugins && \
-              /usr/bin/php82 php artisan migrate --force && \
-              /usr/bin/php82 php artisan config:cache && \
-              /usr/bin/php82 php artisan route:cache && \
-              /usr/bin/php82 php artisan view:cache
+              /usr/bin/php8.2 composer install --no-dev --optimize-autoloader --no-plugins && \
+              /usr/bin/php8.2 php artisan migrate --force && \
+              /usr/bin/php8.2 php artisan config:cache && \
+              /usr/bin/php8.2 php artisan route:cache && \
+              /usr/bin/php8.2 php artisan view:cache
             "
 
 workflows:
