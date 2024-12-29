@@ -14,7 +14,8 @@ jobs:
           command: |
             ssh -o StrictHostKeyChecking=no -p $SSH_PORT $SSH_USER@$SSH_HOST \
             'cd /www/wwwroot/api-cvras.ddns.net/centralized_vehicle_rental_administration_system_be && \
-            git pull origin main && \
+            git config --global --add safe.directory /www/wwwroot/api-cvras.ddns.net/centralized_vehicle_rental_administration_system_be && \
+            git pull origin ${CIRCLE_BRANCH} && \
             composer install --no-dev --optimize-autoloader && \
             php artisan migrate --force && \
             php artisan config:cache && \
