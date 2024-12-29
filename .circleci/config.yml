@@ -1,56 +1,32 @@
-# This config was automatically generated from your source code
-# Stacks detected: deps:node:.,deps:php:.
 version: 2.1
-orbs:
-  node: circleci/node@5
-  php: circleci/php@1
+
 jobs:
-  build-node:
-    # Build node project
-    executor: node/default
-    steps:
-      - checkout
-      - node/install-packages:
-          cache-path: ~/project/node_modules
-          override-ci-command: npm install
-      - run:
-          command: npm run build
-      - run:
-          name: Create the ~/artifacts directory if it doesn't exist
-          command: mkdir -p ~/artifacts
-      # Copy output to artifacts dir
-      - run:
-          name: Copy artifacts
-          command: cp -R build dist public .output .next .docusaurus ~/artifacts 2>/dev/null || true
-      - store_artifacts:
-          path: ~/artifacts
-          destination: node-build
-  test-php:
-    # Install php packages and run tests
-    docker:
-      - image: cimg/php:8.2-node
-    steps:
-      - checkout
-      - php/install-packages
-      - run:
-          name: run tests
-          command: ./vendor/bin/phpunit
   deploy:
-    # This is an example deploy job, not actually used by the workflow
     docker:
-      - image: cimg/base:stable
+      - image: cimg/php:8.2
     steps:
-      # Replace this with steps to deploy to users
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - 'SHA256:Re+8XCZkBozEzRJcwfVSQJbyTn8yTJMhImvoy2WcalI'
       - run:
-          name: deploy
-          command: '#e.g. ./deploy.sh'
+          name: Deploy to VPS
+          command: |
+            ssh -o StrictHostKeyChecking=no -p $SSH_PORT $SSH_USER@$SSH_HOST << 'EOF'
+              cd /path/to/your/project
+              git pull origin main
+              composer install --no-dev --optimize-autoloader
+              php artisan migrate --force
+              php artisan config:cache
+              php artisan route:cache
+              php artisan view:cache
+            EOF
+
 workflows:
-  build-and-test:
+  version: 2
+  deploy:
     jobs:
-      - build-node:
-          requires:
-            - test-php
-      - test-php
-    # - deploy:
-    #     requires:
-    #       - build-node
+      - deploy:
+          filters:
+            branches:
+              only: main
