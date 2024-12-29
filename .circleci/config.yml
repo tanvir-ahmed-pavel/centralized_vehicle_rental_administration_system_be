@@ -20,12 +20,13 @@ jobs:
               cd /www/wwwroot/api-cvras.ddns.net/centralized_vehicle_rental_administration_system_be && \
               git config --global --add safe.directory /www/wwwroot/api-cvras.ddns.net/centralized_vehicle_rental_administration_system_be && \
               git pull origin ${CIRCLE_BRANCH} && \
-              composer install --no-dev --optimize-autoloader && \
+              php -d zend_extension=xdebug.so composer install --no-dev --optimize-autoloader && \
               php artisan migrate --force && \
               php artisan config:cache && \
               php artisan route:cache && \
               php artisan view:cache
             "
+
 workflows:
   version: 2
   deploy:
