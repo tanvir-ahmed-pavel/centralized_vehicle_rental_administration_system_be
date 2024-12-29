@@ -16,6 +16,7 @@ class AuthController extends Controller
     use ThrottlesAttempts;
     public function register(Request $request)
     {
+        return response()->json(['error' => "We are not accepting request via this from, please contact admin."], 406);
         return DB::transaction(function () use ($request) {
 
             $validatedData = $request->validate(User::validationRules());
